@@ -42,6 +42,11 @@ namespace ProcessExplorer
             this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
             this.fileOffsetButton = new System.Windows.Forms.ToolStripButton();
             this.relativeOffsetButton = new System.Windows.Forms.ToolStripButton();
+            this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
+            this.singleByteButton = new System.Windows.Forms.ToolStripButton();
+            this.doubleByteButton = new System.Windows.Forms.ToolStripButton();
+            this.settingsLabel = new System.Windows.Forms.Label();
+            this.toolStripSeparator3 = new System.Windows.Forms.ToolStripSeparator();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -167,7 +172,11 @@ namespace ProcessExplorer
             this.binaryButton,
             this.toolStripSeparator1,
             this.fileOffsetButton,
-            this.relativeOffsetButton});
+            this.relativeOffsetButton,
+            this.toolStripSeparator2,
+            this.singleByteButton,
+            this.doubleByteButton,
+            this.toolStripSeparator3});
             this.toolStrip.Location = new System.Drawing.Point(0, 19);
             this.toolStrip.Name = "toolStrip";
             this.toolStrip.Size = new System.Drawing.Size(1000, 25);
@@ -239,12 +248,62 @@ namespace ProcessExplorer
             this.relativeOffsetButton.Text = "RO";
             this.relativeOffsetButton.ToolTipText = "Relative Offset";
             // 
+            // toolStripSeparator2
+            // 
+            this.toolStripSeparator2.Name = "toolStripSeparator2";
+            this.toolStripSeparator2.Size = new System.Drawing.Size(6, 25);
+            // 
+            // singleByteButton
+            // 
+            this.singleByteButton.AutoSize = false;
+            this.singleByteButton.CheckOnClick = true;
+            this.singleByteButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.singleByteButton.Image = ((System.Drawing.Image)(resources.GetObject("singleByteButton.Image")));
+            this.singleByteButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.singleByteButton.Name = "singleByteButton";
+            this.singleByteButton.Size = new System.Drawing.Size(30, 21);
+            this.singleByteButton.Text = "B";
+            this.singleByteButton.ToolTipText = "Data will be displayed as individual bytes in little-endian";
+            // 
+            // doubleByteButton
+            // 
+            this.doubleByteButton.AutoSize = false;
+            this.doubleByteButton.CheckOnClick = true;
+            this.doubleByteButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.doubleByteButton.Image = ((System.Drawing.Image)(resources.GetObject("doubleByteButton.Image")));
+            this.doubleByteButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.doubleByteButton.Name = "doubleByteButton";
+            this.doubleByteButton.Size = new System.Drawing.Size(30, 21);
+            this.doubleByteButton.Text = "BB";
+            this.doubleByteButton.ToolTipText = "Data will be displayed as sets of two bytes. Data in all headers and\r\nsections wi" +
+    "ll be converted to their big-endian value. Please note\r\nthat ASCII characters sh" +
+    "ould be read in their single byte form.";
+            // 
+            // settingsLabel
+            // 
+            this.settingsLabel.BackColor = System.Drawing.Color.White;
+            this.settingsLabel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.settingsLabel.Location = new System.Drawing.Point(29, 0);
+            this.settingsLabel.Margin = new System.Windows.Forms.Padding(3);
+            this.settingsLabel.Name = "settingsLabel";
+            this.settingsLabel.Size = new System.Drawing.Size(58, 19);
+            this.settingsLabel.TabIndex = 4;
+            this.settingsLabel.Text = "Settings";
+            this.settingsLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.settingsLabel.Click += new System.EventHandler(this.settingsLabel_Click);
+            // 
+            // toolStripSeparator3
+            // 
+            this.toolStripSeparator3.Name = "toolStripSeparator3";
+            this.toolStripSeparator3.Size = new System.Drawing.Size(6, 25);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.LightGray;
             this.ClientSize = new System.Drawing.Size(984, 561);
+            this.Controls.Add(this.settingsLabel);
             this.Controls.Add(this.toolStrip);
             this.Controls.Add(this.hexLabel);
             this.Controls.Add(this.splitContainer1);
@@ -280,6 +339,11 @@ namespace ProcessExplorer
         private ToolStripSeparator toolStripSeparator1;
         private ToolStripButton fileOffsetButton;
         private ToolStripButton relativeOffsetButton;
+        private ToolStripSeparator toolStripSeparator2;
+        private ToolStripButton singleByteButton;
+        private ToolStripButton doubleByteButton;
+        private Label settingsLabel;
+        private ToolStripSeparator toolStripSeparator3;
     }
 }
 

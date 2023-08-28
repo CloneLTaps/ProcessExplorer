@@ -30,4 +30,8 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="forms\" />
+  </ItemGroup>
+
 </Project>

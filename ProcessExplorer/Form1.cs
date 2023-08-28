@@ -3,10 +3,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using System.IO;
 
@@ -15,6 +11,7 @@ namespace ProcessExplorer
     public partial class Form1 : Form
     {
         private readonly ContextMenuStrip fileContextMenu = new ContextMenuStrip();
+        private readonly ContextMenuStrip settingsMenu = new ContextMenuStrip();
         private ProcessHandler.ProcessComponent selectedComponent = ProcessHandler.ProcessComponent.NULL_COMPONENT;
         private ProcessHandler processHandler;
 
@@ -25,6 +22,14 @@ namespace ProcessExplorer
             fileContextMenu.Items.Add("Open");
             fileContextMenu.Items.Add("Save");
             fileContextMenu.ItemClicked += new ToolStripItemClickedEventHandler(fileLabel_Click_ContextMenu);
+
+            ToolStripMenuItem setting1 = new ToolStripMenuItem("Remove extra 0's");
+            setting1.Click += Settings_Click;
+            settingsMenu.Items.Add(setting1);
+
+            ToolStripMenuItem setting2 = new ToolStripMenuItem("Display offsets in hex");
+            setting2.Click += Settings_Click;
+            settingsMenu.Items.Add(setting2);
         }
         private void Form1_Load(object sender, EventArgs e)
         {
@@ -36,11 +41,11 @@ namespace ProcessExplorer
                 t.Click += new System.EventHandler(this.toolStripButton_Click);
             }
 
-            hexButton.Checked = true;
-            Resize += YourForm_Resize;
+            hexButton.Checked = singleByteButton.Checked = fileOffsetButton.Checked = true;
+            Resize += Form1_Resize;
         }
 
-        private void YourForm_Resize(object sender, EventArgs e)
+        private void Form1_Resize(object sender, EventArgs e)
         {
             // Adjust the SplitContainer's width and height as needed
             splitContainer1.MaximumSize = new Size(ClientSize.Width, Height - 80);//44
@@ -64,28 +69,21 @@ namespace ProcessExplorer
             dataGridView.Columns[2].Width = column3StartingWidth; // This wont ever need to expand since there will always be 16 characters
         }
 
-        /* This will handle setting up everything */
-        private void setup()
+        private void Settings_Click(object sender, EventArgs e)
         {
-            TreeNode rootNode = new TreeNode(processHandler.FileName);
-
-            TreeNode dosHeader = new TreeNode("DOS Header");
-            TreeNode dosStub = new TreeNode("DOS Stub");
-            TreeNode peHeader = new TreeNode("PE Header");
-
-            TreeNode optionalPeHeader = new TreeNode("Optional PE Header");
-            peHeader.Nodes.Add(optionalPeHeader);
-
-            rootNode.Nodes.Add(dosHeader);
-            rootNode.Nodes.Add(dosStub);
-            rootNode.Nodes.Add(peHeader);
-            //Next I need to check for sections and add them to the root node
-            treeView.Nodes.Add(rootNode);
-        }
-
-        private void fileLabel_Click(object sender, EventArgs e)
-        {
-            fileContextMenu.Show(fileLabel, new Point(fileLabel.Location.X, fileLabel.Location.Y + fileLabel.Size.Height));
+            ToolStripMenuItem settingItem = sender as ToolStripMenuItem;
+            settingItem.Checked = !settingItem.Checked; // Toggle checked state
+            Console.WriteLine("Text: " + settingItem.Text);
+            
+            switch(settingItem.Text)
+            {
+                case "Display offsets in hex" : processHandler.OffsetsInHex = settingItem.Checked;
+                    triggerRedraw();
+                    break;
+                case "Remove extra 0's": processHandler.RemoveZeros = settingItem.Checked;
+                    triggerRedraw();
+                    break;
+            }
         }
 
         private void fileLabel_Click_ContextMenu(object sender, ToolStripItemClickedEventArgs e)
@@ -122,6 +120,39 @@ namespace ProcessExplorer
             }
         }
 
+        private void setup()
+        {
+            TreeNode rootNode = new TreeNode(processHandler.FileName);
+
+            TreeNode dosHeader = new TreeNode("DOS Header");
+            TreeNode dosStub = new TreeNode("DOS Stub");
+            TreeNode peHeader = new TreeNode("PE Header");
+
+            TreeNode optionalPeHeader = new TreeNode("Optional PE Header");
+            peHeader.Nodes.Add(optionalPeHeader);
+
+            rootNode.Nodes.Add(dosHeader);
+            rootNode.Nodes.Add(dosStub);
+            rootNode.Nodes.Add(peHeader);
+            //Next I need to check for sections and add them to the root node
+            treeView.Nodes.Add(rootNode);
+
+            // This will auto check the following settings on startup
+            foreach (ToolStripItem item in settingsMenu.Items)
+            {
+                if (item is ToolStripMenuItem menuItem && menuItem.Text == "Remove extra 0's")
+                {   
+                    menuItem.Checked = processHandler.RemoveZeros = true;
+                }
+            }
+
+            // This will trigger the data to be dislayed
+            selectedComponent = ProcessHandler.ProcessComponent.EVERYTHING;
+            dataGridView.RowCount = processHandler.filesHex.GetLength(0);
+            dataGridView.CellValueNeeded += dataGridView_CellValueNeeded;
+            triggerRedraw();
+        }
+
         private void toolStripButton_Click(object sender, EventArgs e)
         {
             // Get the button that was clicked
@@ -153,24 +184,50 @@ namespace ProcessExplorer
             {
                 if (binaryButton.Checked)
                 {
-                    decimalButton.Checked = decimalButton.Checked = false;
+                    decimalButton.Checked = hexButton.Checked = false;
                     triggerRedraw();
                 }
                 binaryButton.Checked = true;
             }
             else if (text == "FO")
             {
+                if(fileOffsetButton.Checked)
+                {
+                    relativeOffsetButton.Checked = false;
+                    // RelativeOffset and FileOffsets are the same if you are viewing everything or DOS Headers
+                    if (selectedComponent != ProcessHandler.ProcessComponent.EVERYTHING && selectedComponent != ProcessHandler.ProcessComponent.DOS_HEADER)
+                        triggerRedraw();
+                }
                 fileOffsetButton.Checked = true;
-                relativeOffsetButton.Checked = false;
-                // RelativeOffset and FileOffsets are the same if you are viewing everything
-                if (selectedComponent == ProcessHandler.ProcessComponent.EVERYTHING) return;
             }
             else if (text == "RO")
             {
+                if(relativeOffsetButton.Checked)
+                {
+                    fileOffsetButton.Checked = false;
+                    // RelativeOffset and FileOffsets are the same if you are viewing everything or DOS Headers
+                    if (selectedComponent != ProcessHandler.ProcessComponent.EVERYTHING && selectedComponent != ProcessHandler.ProcessComponent.DOS_HEADER)
+                        triggerRedraw();
+                }
                 relativeOffsetButton.Checked = true;
-                fileOffsetButton.Checked = false;
-                // RelativeOffset and FileOffsets are the same if you are viewing everything
-                if (selectedComponent == ProcessHandler.ProcessComponent.EVERYTHING) return;
+            }
+            else if(text == "B")
+            {
+                if(singleByteButton.Checked)
+                {
+                    doubleByteButton.Checked = false;
+                    triggerRedraw();
+                }
+                singleByteButton.Checked = true;
+            }
+            else if(text == "BB")
+            {
+                if(doubleByteButton.Checked)
+                {
+                    singleByteButton.Checked = false;
+                    triggerRedraw();
+                }
+                doubleByteButton.Checked = true;
             }
 
         }
@@ -195,38 +252,62 @@ namespace ProcessExplorer
                 TreeNode clickedNode = e.Node;
                 string nodeText = clickedNode.Text;
                 if (nodeText.Contains(".exe") || nodeText.Contains(".dll")) nodeText = "everything";
-                selectedComponent = ProcessHandler.getProcessComponent(nodeText);
+                ProcessHandler.ProcessComponent selected = ProcessHandler.getProcessComponent(nodeText);
+                //dataGridView.RowCount = processHandler.filesHex.GetLength(0);
+                if (selected == selectedComponent) return;
+                selectedComponent = selected;
 
-                /*switch(selectedComponent)
-                {
-                    case 
-                }*/
-                Console.WriteLine("Rows:" + processHandler.filesHex.GetLength(0));
-                dataGridView.RowCount = processHandler.filesHex.GetLength(0);
+                Console.WriteLine("Selected:" + selectedComponent + " Rows:" + processHandler.filesHex.GetLength(0));
                 dataGridView.CellValueNeeded += dataGridView_CellValueNeeded;
-
-                //dataGridView.Columns["Offset"].DefaultCellStyle.Font = new Font(dataGridView.DefaultCellStyle.Font.FontFamily, 18f);
-                //dataGridView.Columns["Data"].DefaultCellStyle.Font = new Font(dataGridView.DefaultCellStyle.Font.FontFamily, 18f);
-                //dataGridView.Columns["ASCII"].DefaultCellStyle.Font = new Font(dataGridView.DefaultCellStyle.Font.FontFamily, 18f);
+                triggerRedraw();
             }
         }
-
+        
         private void dataGridView_CellValueNeeded(object sender, DataGridViewCellValueEventArgs e)
         {
             if (e.RowIndex >= processHandler.filesHex.GetLength(0) || e.ColumnIndex >= processHandler.filesHex.GetLength(1)) return;
 
             // This will ensure the data is displayed in the correct format
-            if(decimalButton.Checked)
-            {   // decimal and binary's array both dont contain the ASCI characters
-                if(e.ColumnIndex < 2) e.Value = processHandler.filesDecimal[e.RowIndex, e.ColumnIndex];
-                else e.Value = processHandler.filesHex[e.RowIndex, e.ColumnIndex];
+            if (decimalButton.Checked)
+            {
+                switch (selectedComponent)
+                {
+                    case ProcessHandler.ProcessComponent.EVERYTHING:
+                        // decimal and binary's array both dont contain the ASCI characters
+                        if (e.ColumnIndex < 2) e.Value = processHandler.getDecimal(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
+                        else e.Value = processHandler.filesHex[e.RowIndex, e.ColumnIndex];
+                        break;
+                    case ProcessHandler.ProcessComponent.DOS_HEADER:
+                       // dataGridView.RowCount = processHandler.dosHeader.getRowCount();
+                        e.Value = processHandler.dosHeader.getDecimal(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
+                        break;
+                }
             }
-            else if(binaryButton.Checked)
-            {   // decimal and binary's array both dont contain the ASCI characters
-                if (e.ColumnIndex < 2) e.Value = processHandler.filesBinary[e.RowIndex, e.ColumnIndex];
-                else e.Value = processHandler.filesHex[e.RowIndex, e.ColumnIndex];
+            else if (binaryButton.Checked)
+            {   
+                switch (selectedComponent)
+                {
+                    case ProcessHandler.ProcessComponent.EVERYTHING:
+                        if (e.ColumnIndex < 2) e.Value = processHandler.getBinary(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
+                        else e.Value = processHandler.filesHex[e.RowIndex, e.ColumnIndex];
+                        break;
+                    case ProcessHandler.ProcessComponent.DOS_HEADER:
+                        e.Value = processHandler.dosHeader.getBinary(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
+                        break;
+                }
             }
-            else e.Value = processHandler.filesHex[e.RowIndex, e.ColumnIndex];
+            else
+            {
+                switch (selectedComponent)
+                {
+                    case ProcessHandler.ProcessComponent.EVERYTHING : e.Value = processHandler.getHex(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
+                        break;
+                    case ProcessHandler.ProcessComponent.DOS_HEADER: // Starting here the total rows of EVERYTHING will excede the size of the bellow arrays
+                        e.Value = processHandler.dosHeader.getHex(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
+                        break;
+
+                }
+            }
         }
 
         private void dataGridView_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
@@ -243,6 +324,11 @@ namespace ProcessExplorer
             Console.WriteLine("Change text");*/
         }
 
+        private void fileLabel_Click(object sender, EventArgs e)
+        {
+            fileContextMenu.Show(fileLabel, new Point(fileLabel.Location.X, fileLabel.Location.Y + fileLabel.Size.Height));
+        }
+
         private void fileLabel_MouseHover(object sender, EventArgs e)
         {
             fileLabel.BackColor = SystemColors.GradientInactiveCaption;
@@ -255,5 +341,9 @@ namespace ProcessExplorer
             fileLabel.ForeColor = SystemColors.ControlText;
         }
 
+        private void settingsLabel_Click(object sender, EventArgs e)
+        {
+            settingsMenu.Show(settingsLabel, new Point(settingsLabel.Location.X - settingsLabel.Size.Width + fileLabel.Size.Width, settingsLabel.Location.Y + settingsLabel.Size.Height));
+        }
     }
 }

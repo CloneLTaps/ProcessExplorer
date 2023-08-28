@@ -3,6 +3,7 @@ using System.Text;
 using System.Data;
 using System.Linq;
 using System.IO;
+using ProcessExplorer.components;
 using System.Globalization;
 
 namespace ProcessExplorer
@@ -13,8 +14,13 @@ namespace ProcessExplorer
         public string[,] filesBinary { get; private set; }
         public string[,] filesDecimal { get; private set; }
         public string FileName { get; private set; }
-        private FileStream file;
-  
+
+        public bool RemoveZeros { get; set; }
+        public bool OffsetsInHex { get; set; }
+
+        public readonly SuperHeader dosHeader, dosStub;
+        private readonly FileStream file;
+
         public ProcessHandler(FileStream file)
         {
             if (file == null) return;
@@ -29,6 +35,59 @@ namespace ProcessExplorer
             filesBinary = new string[(int)Math.Ceiling(file.Length / 16.0), 2];
 
             populateArrays();
+
+            dosHeader = new DosHeader(this);
+            dosStub = new DosStub(this, dosHeader.StartPoint);
+        }
+
+        public string getHex(int row, int column, bool doubleByte)
+        {
+            if (row > filesHex.GetLength(0) - 1 || column > filesHex.GetLength(1)) return "";
+            if (!doubleByte || column == 0 || column == 2) return filesHex[row, column]; // Returns the single byte data, offset, or the description
+            return getBigEndian(filesHex[row, column]);
+        }
+
+        public string getDecimal(int row, int column, bool doubleByte)
+        {
+            if (row > filesDecimal.GetLength(0) - 1 || column > filesHex.GetLength(1)) return "";
+            if (column > 1) return filesHex[row, column]; // This is here because this array does not contain the desc
+            if (column == 0 && OffsetsInHex) return filesHex[row, 0]; // This means the offsets should be displayed in hex
+            if (!doubleByte || column == 0) return filesDecimal[row, column]; // Returns the single byte data or the offset
+            // This will reverse the decimal and switch it from little-endian to big-endian
+            string bigEndianHex = getBigEndian(filesHex[row, column]);
+            return string.Join(" ", bigEndianHex.Split(' ').Select(hexPair => int.Parse(hexPair, NumberStyles.HexNumber)));
+        }
+
+        public string getBinary(int row, int column, bool doubleByte)
+        {
+            if (row > filesBinary.GetLength(0) - 1 || column > filesHex.GetLength(1)) return "";
+            if (column > 1) return filesHex[row, column]; // This is here because this array does not contain the desc
+            if (column == 0 && OffsetsInHex) return filesHex[row, 0]; // This means the offsets should be displayed in hex
+            if (!doubleByte || column == 0) return filesBinary[row, column]; // Returns the single byte data or the offset
+            // This will reverse the binary and switch it from little-endian to big-endian
+            string bigEndianHex = getBigEndian(filesHex[row, column]);
+            return string.Join(" ", bigEndianHex.Split(' ').Select(hexPair => Convert.ToString(Convert.ToInt32(hexPair, 16), 2)));
+        }
+
+        private string getBigEndian(string start)
+        {
+            string[] hexPairs = start.Split(' ');
+            string reversedHexValues = string.Join(" ",
+            hexPairs
+                .Where((value, index) => index % 2 == 1)
+                .Select((value, index) =>
+                {
+                    // This part changes 0000 into a single 0
+                    string firstPart = hexPairs[index * 2 + 1];
+                    string secondPart = hexPairs[index * 2];
+                    if (RemoveZeros && secondPart == "00" && firstPart == "00") return "0";
+                    return firstPart + secondPart;
+                }));
+            return reversedHexValues;
+/*
+            hexPairs
+                .Where((value, index) => index % 2 == 1)
+                .Select((value, index) => hexPairs[index * 2 + 1] + hexPairs[index * 2]));*/
         }
 
         /* This will populate all our arrays  */
@@ -58,7 +117,7 @@ namespace ProcessExplorer
                         ascii += asciiChar;
                     }
 
-                    Console.WriteLine("Dec:" + decimalNumbers);
+                    //Console.WriteLine("Dec:" + decimalNumbers);
 
                     // filesHex only gets the ascii since it will be the same for the other two arrays
                     // so theres no point wasting memory on adding it.
