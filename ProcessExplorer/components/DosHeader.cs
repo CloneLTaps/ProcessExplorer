@@ -4,7 +4,7 @@ namespace ProcessExplorer.components
 {
     class DosHeader : SuperHeader
     {
-        public DosHeader(ProcessHandler processHandler) : base(processHandler, 19, 3)
+        public DosHeader(ProcessHandler processHandler) : base(processHandler, 19, 3, true)
         {
             string[,] sizeAndDesc = new string[19, 2];
             sizeAndDesc[0, 0] = "2"; sizeAndDesc[0, 1] = "e_magic (2 bytes) \"MZ\" signature indiciating this file is a DOS exe.";
@@ -29,7 +29,7 @@ namespace ProcessExplorer.components
 
             StartPoint = 0; // Must set the start point before populating the arrays
             populateArrays(sizeAndDesc);
-            Console.WriteLine("PeHeaderStart:" + Convert.ToInt32(hexArray[rowSize, 0]));
+            Console.WriteLine("PeHeaderStart:" + hexArray[RowSize - 1, 0]);
         }
 
     }

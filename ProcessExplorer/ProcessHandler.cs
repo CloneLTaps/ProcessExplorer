@@ -18,7 +18,7 @@ namespace ProcessExplorer
         public bool RemoveZeros { get; set; }
         public bool OffsetsInHex { get; set; }
 
-        public readonly SuperHeader dosHeader, dosStub;
+        public readonly SuperHeader dosHeader, dosStub, peHeader, optionalPeHeader;
         private readonly FileStream file;
 
         public ProcessHandler(FileStream file)
@@ -36,8 +36,12 @@ namespace ProcessExplorer
 
             populateArrays();
 
+            Console.WriteLine("Starting DOS HEADER");
             dosHeader = new DosHeader(this);
-            dosStub = new DosStub(this, dosHeader.StartPoint);
+            Console.WriteLine("Starting DOS STUB");
+            dosStub = new DosStub(this);
+            Console.WriteLine("Starting PE Header");
+            peHeader = new PeHeader(this, dosStub.EndPoint); // I am making this a paramter to aid when I aid support for Rich Headers which come after the DosStub and before this
         }
 
         public string getHex(int row, int column, bool doubleByte)
@@ -73,21 +77,21 @@ namespace ProcessExplorer
         {
             string[] hexPairs = start.Split(' ');
             string reversedHexValues = string.Join(" ",
-            hexPairs
-                .Where((value, index) => index % 2 == 1)
+            hexPairs.Where((value, index) => index % 2 == 1)
                 .Select((value, index) =>
                 {
                     // This part changes 0000 into a single 0
                     string firstPart = hexPairs[index * 2 + 1];
                     string secondPart = hexPairs[index * 2];
-                    if (RemoveZeros && secondPart == "00" && firstPart == "00") return "0";
-                    return firstPart + secondPart;
+                    string combined = firstPart + secondPart;
+                    if (RemoveZeros)
+                    {
+                        if (secondPart == "00" && firstPart == "00") combined = "0";
+                        else if ((combined = combined.TrimStart('0')).Length == 0) combined = "0";
+                    }
+                    return combined;
                 }));
             return reversedHexValues;
-/*
-            hexPairs
-                .Where((value, index) => index % 2 == 1)
-                .Select((value, index) => hexPairs[index * 2 + 1] + hexPairs[index * 2]));*/
         }
 
         /* This will populate all our arrays  */

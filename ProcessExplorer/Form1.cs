@@ -23,7 +23,7 @@ namespace ProcessExplorer
             fileContextMenu.Items.Add("Save");
             fileContextMenu.ItemClicked += new ToolStripItemClickedEventHandler(fileLabel_Click_ContextMenu);
 
-            ToolStripMenuItem setting1 = new ToolStripMenuItem("Remove extra 0's");
+            ToolStripMenuItem setting1 = new ToolStripMenuItem("Remove extra zeros");
             setting1.Click += Settings_Click;
             settingsMenu.Items.Add(setting1);
 
@@ -80,7 +80,7 @@ namespace ProcessExplorer
                 case "Display offsets in hex" : processHandler.OffsetsInHex = settingItem.Checked;
                     triggerRedraw();
                     break;
-                case "Remove extra 0's": processHandler.RemoveZeros = settingItem.Checked;
+                case "Remove extra zeros": processHandler.RemoveZeros = settingItem.Checked;
                     triggerRedraw();
                     break;
             }
@@ -140,7 +140,7 @@ namespace ProcessExplorer
             // This will auto check the following settings on startup
             foreach (ToolStripItem item in settingsMenu.Items)
             {
-                if (item is ToolStripMenuItem menuItem && menuItem.Text == "Remove extra 0's")
+                if (item is ToolStripMenuItem menuItem && menuItem.Text == "Remove extra zeros")
                 {   
                     menuItem.Checked = processHandler.RemoveZeros = true;
                 }
@@ -281,6 +281,12 @@ namespace ProcessExplorer
                        // dataGridView.RowCount = processHandler.dosHeader.getRowCount();
                         e.Value = processHandler.dosHeader.getDecimal(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
                         break;
+                    case ProcessHandler.ProcessComponent.DOS_STUB:
+                        e.Value = processHandler.dosStub.getDecimal(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
+                        break;
+                    case ProcessHandler.ProcessComponent.PE_HEADER:
+                        e.Value = processHandler.peHeader.getDecimal(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
+                        break;
                 }
             }
             else if (binaryButton.Checked)
@@ -294,6 +300,12 @@ namespace ProcessExplorer
                     case ProcessHandler.ProcessComponent.DOS_HEADER:
                         e.Value = processHandler.dosHeader.getBinary(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
                         break;
+                    case ProcessHandler.ProcessComponent.DOS_STUB:
+                        e.Value = processHandler.dosStub.getBinary(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
+                        break;
+                    case ProcessHandler.ProcessComponent.PE_HEADER:
+                        e.Value = processHandler.peHeader.getBinary(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
+                        break;
                 }
             }
             else
@@ -305,7 +317,12 @@ namespace ProcessExplorer
                     case ProcessHandler.ProcessComponent.DOS_HEADER: // Starting here the total rows of EVERYTHING will excede the size of the bellow arrays
                         e.Value = processHandler.dosHeader.getHex(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
                         break;
-
+                    case ProcessHandler.ProcessComponent.DOS_STUB:
+                        e.Value = processHandler.dosStub.getHex(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
+                        break;
+                    case ProcessHandler.ProcessComponent.PE_HEADER:
+                        e.Value = processHandler.peHeader.getHex(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
+                        break;
                 }
             }
         }
