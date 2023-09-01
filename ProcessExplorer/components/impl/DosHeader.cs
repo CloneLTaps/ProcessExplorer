@@ -32,5 +32,10 @@ namespace ProcessExplorer.components
             Console.WriteLine("PeHeaderStart:" + hexArray[RowSize - 1, 0]);
         }
 
+        public override void OpenForm(int row)
+        {
+            return; // No custom forms required here
+        }
+
     }
 }

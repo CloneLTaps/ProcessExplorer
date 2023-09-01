@@ -4,22 +4,24 @@ using System.Data;
 using System.Linq;
 using System.IO;
 using ProcessExplorer.components;
+using ProcessExplorer.components.impl;
 using System.Globalization;
 
 namespace ProcessExplorer
 {
     class ProcessHandler
     {
-        public string[,] filesHex { get; private set; }
-        public string[,] filesBinary { get; private set; }
-        public string[,] filesDecimal { get; private set; }
         public string FileName { get; private set; }
 
         public bool RemoveZeros { get; set; }
         public bool OffsetsInHex { get; set; }
 
-        public readonly SuperHeader dosHeader, dosStub, peHeader, optionalPeHeader;
+        public bool ReterunToTop { get; set; }
+
+        public readonly SuperHeader everything, dosHeader, dosStub, peHeader, optionalPeHeader, optionalPeHeader64, optionalPeHeader32;
         private readonly FileStream file;
+
+        public bool is64Bit;
 
         public ProcessHandler(FileStream file)
         {
@@ -30,72 +32,93 @@ namespace ProcessExplorer
             // This specifies that the array will be 16 across and (file.Length / 16) down
             // I am precomputing these values so that I dont have to recompute them when the user switches windows or modes
             //filesHex = new string[(int)Math.Ceiling(file.Length / 16.0), 16];
-            filesHex = new string[(int)Math.Ceiling(file.Length / 16.0), 3];
-            filesDecimal = new string[(int)Math.Ceiling(file.Length / 16.0), 2];
-            filesBinary = new string[(int)Math.Ceiling(file.Length / 16.0), 2];
+            string[,] filesHex = new string[(int)Math.Ceiling(file.Length / 16.0), 3];
+            string[,] filesDecimal = new string[(int)Math.Ceiling(file.Length / 16.0), 2];
+            string[,] filesBinary = new string[(int)Math.Ceiling(file.Length / 16.0), 2];
 
-            populateArrays();
+            populateArrays(filesHex, filesDecimal, filesBinary); // Passes a reference to the memory address of these arrays instead of their values
 
+            everything = new Everything(this, filesHex, filesDecimal, filesBinary);
             Console.WriteLine("Starting DOS HEADER");
             dosHeader = new DosHeader(this);
             Console.WriteLine("Starting DOS STUB");
             dosStub = new DosStub(this);
             Console.WriteLine("Starting PE Header");
             peHeader = new PeHeader(this, dosStub.EndPoint); // I am making this a paramter to aid when I aid support for Rich Headers which come after the DosStub and before this
+            Console.WriteLine("Starting PE Optional Header");
+            optionalPeHeader = new OptionalPeHeader(this, peHeader.EndPoint);
+
+            if(((OptionalPeHeader)optionalPeHeader).validHeader)
+            { // This means we most likely have either 64 or 32 bit option headers
+                if (((OptionalPeHeader)optionalPeHeader).peThirtyTwoPlus)
+                {   // This means our optional header is valid and that we are using 64 bit headers
+                    Console.WriteLine("Starting PE Optional Header 64");
+                    optionalPeHeader64 = new OptionalPeHeader64(this, optionalPeHeader.EndPoint);
+                }
+                else optionalPeHeader32 = new OptionalPeHeader32(this, optionalPeHeader.EndPoint);
+            }
+            else optionalPeHeader = null; // This means we dont have a valid optional header
+
         }
 
-        public string getHex(int row, int column, bool doubleByte)
+        public SuperHeader GetSuperHeader(ProcessComponent component)
         {
-            if (row > filesHex.GetLength(0) - 1 || column > filesHex.GetLength(1)) return "";
-            if (!doubleByte || column == 0 || column == 2) return filesHex[row, column]; // Returns the single byte data, offset, or the description
-            return getBigEndian(filesHex[row, column]);
+            switch (component)
+            {
+                case ProcessComponent.EVERYTHING: return everything;
+                case ProcessComponent.DOS_HEADER: return dosHeader;
+                case ProcessComponent.DOS_STUB: return dosStub;
+                case ProcessComponent.PE_HEADER: return peHeader;
+                case ProcessComponent.OPITIONAL_PE_HEADER: return optionalPeHeader;
+                case ProcessComponent.OPITIONAL_PE_HEADER_64: return optionalPeHeader64;
+                case ProcessComponent.OPITIONAL_PE_HEADER_32: return optionalPeHeader32;
+            }
+            return null;
         }
 
-        public string getDecimal(int row, int column, bool doubleByte)
+        public int GetComponentsRowIndexCount(ProcessComponent component)
         {
-            if (row > filesDecimal.GetLength(0) - 1 || column > filesHex.GetLength(1)) return "";
-            if (column > 1) return filesHex[row, column]; // This is here because this array does not contain the desc
-            if (column == 0 && OffsetsInHex) return filesHex[row, 0]; // This means the offsets should be displayed in hex
-            if (!doubleByte || column == 0) return filesDecimal[row, column]; // Returns the single byte data or the offset
-            // This will reverse the decimal and switch it from little-endian to big-endian
-            string bigEndianHex = getBigEndian(filesHex[row, column]);
-            return string.Join(" ", bigEndianHex.Split(' ').Select(hexPair => int.Parse(hexPair, NumberStyles.HexNumber)));
+            SuperHeader header = GetSuperHeader(component);
+            if (header == null) return 0;
+            return header.hexArray.GetLength(0) - 1;
         }
 
-        public string getBinary(int row, int column, bool doubleByte)
+        public int GetComponentsColumnIndexCount(ProcessComponent component)
         {
-            if (row > filesBinary.GetLength(0) - 1 || column > filesHex.GetLength(1)) return "";
-            if (column > 1) return filesHex[row, column]; // This is here because this array does not contain the desc
-            if (column == 0 && OffsetsInHex) return filesHex[row, 0]; // This means the offsets should be displayed in hex
-            if (!doubleByte || column == 0) return filesBinary[row, column]; // Returns the single byte data or the offset
-            // This will reverse the binary and switch it from little-endian to big-endian
-            string bigEndianHex = getBigEndian(filesHex[row, column]);
-            return string.Join(" ", bigEndianHex.Split(' ').Select(hexPair => Convert.ToString(Convert.ToInt32(hexPair, 16), 2)));
+            SuperHeader header = GetSuperHeader(component);
+            if (header == null) return 0;
+            return header.hexArray.GetLength(1) - 1;
         }
 
-        private string getBigEndian(string start)
+
+        /* Returns data that will fill up the DataDisplayView */
+        public string GetValue(int row, int column, bool doubleByte, ProcessComponent component, DataType type)
         {
-            string[] hexPairs = start.Split(' ');
-            string reversedHexValues = string.Join(" ",
-            hexPairs.Where((value, index) => index % 2 == 1)
-                .Select((value, index) =>
-                {
-                    // This part changes 0000 into a single 0
-                    string firstPart = hexPairs[index * 2 + 1];
-                    string secondPart = hexPairs[index * 2];
-                    string combined = firstPart + secondPart;
-                    if (RemoveZeros)
-                    {
-                        if (secondPart == "00" && firstPart == "00") combined = "0";
-                        else if ((combined = combined.TrimStart('0')).Length == 0) combined = "0";
-                    }
-                    return combined;
-                }));
-            return reversedHexValues;
+            SuperHeader header = GetSuperHeader(component);
+            if (header == null) return "";
+
+            switch(type)
+            {
+                case DataType.HEX: return header.getHex(row, column, doubleByte);
+                case DataType.DECIMAL: 
+                    if(column == 2) return header.getHex(row, 2, doubleByte);
+                    return header.getDecimal(row, column, doubleByte);
+                case DataType.BINARY:
+                    if (column == 2) return header.getHex(row, 2, doubleByte);
+                    return header.getBinary(row, column, doubleByte);
+            }
+            return "";
         }
+         
+        public void OpenDescrptionForm(ProcessComponent component, int row)
+        {
+            SuperHeader header = GetSuperHeader(component);
+            if(header != null) header.OpenForm(row);
+        }
+
 
         /* This will populate all our arrays  */
-        private void populateArrays()
+        private void populateArrays(string[,] filesHex, string[,] filesDecimal, string[,] filesBinary)
         {
             try
             {
@@ -175,8 +198,13 @@ namespace ProcessExplorer
 
         public enum ProcessComponent
         {
-            EVERYTHING, DOS_HEADER, DOS_STUB, PE_HEADER, OPITIONAL_PE_HEADER, 
+            EVERYTHING, DOS_HEADER, DOS_STUB, PE_HEADER, OPITIONAL_PE_HEADER, OPITIONAL_PE_HEADER_64, OPITIONAL_PE_HEADER_32,
             SECTION_TEXT, SECTION_DATA, SECTION_RSRC, NULL_COMPONENT
+        }
+
+        public enum DataType
+        {
+            HEX, DECIMAL, BINARY
         }
 
         public static ProcessComponent getProcessComponent(string name)
@@ -188,6 +216,8 @@ namespace ProcessExplorer
                 case "dos stub": return ProcessComponent.DOS_STUB;
                 case "pe header": return ProcessComponent.PE_HEADER;
                 case "optional pe header": return ProcessComponent.OPITIONAL_PE_HEADER;
+                case "optional pe header 64": return ProcessComponent.OPITIONAL_PE_HEADER_64;
+                case "optional pe header 32": return ProcessComponent.OPITIONAL_PE_HEADER_32;
             }
             return ProcessComponent.NULL_COMPONENT;
         }

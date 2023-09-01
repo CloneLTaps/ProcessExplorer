@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Linq;
 using System.Globalization;
+using System.Drawing;
+using System.Windows.Forms;
+using System.Collections.Generic;
 
 namespace ProcessExplorer.components
 {
     /* Super class for all other headers, sections, etc */
-    class SuperHeader
+    abstract class SuperHeader
     {
         protected ProcessHandler processHandler;
 
@@ -22,6 +25,8 @@ namespace ProcessExplorer.components
 
         public bool ShrinkDataSection { get; private set; } // This is for headers that show descriptions 
 
+        public Dictionary<int, string> characteristics { get; protected set; }
+
         public SuperHeader(ProcessHandler processHandler, int rowSize, int columnSize, bool shrinkDataSection)
         {
             this.ShrinkDataSection = shrinkDataSection;
@@ -36,6 +41,15 @@ namespace ProcessExplorer.components
             Console.WriteLine("SuperHeader 2");
         }
 
+        public abstract void OpenForm(int row);
+
+        protected void SetAllArrays(string[,] hexArray, string[,] deciArray, string[,] binaryArray)
+        {
+            this.hexArray = hexArray;
+            this.deciArray = deciArray;
+            this.binaryArray = binaryArray;
+        }
+
         protected void PopulateNonDescArrays()
         {
             //Console.WriteLine(" ");
@@ -45,7 +59,7 @@ namespace ProcessExplorer.components
             //Console.WriteLine("Starting StartinIndex:" + startingIndex + " TotalByteSize:" + totalByteSize + " StartPoint:" + StartPoint + " EndPoint:" + EndPoint);
 
             // I need to first redefine the size of the arrays
-            string[,] filesHex = processHandler.filesHex;
+            string[,] filesHex = processHandler.everything.hexArray;
             int rowSize = GetRowCount(filesHex, startingIndex);
             //Console.WriteLine("RowCount:" + rowSize);
             hexArray = new string[rowSize, ColumnSize];
@@ -111,8 +125,6 @@ namespace ProcessExplorer.components
                 binaryArray[ourArrayIndex, 1] = string.Join(" ", splitHexData.Select(hex => Convert.ToString(long.Parse(hex, NumberStyles.HexNumber), 2)));
                 ourArrayIndex++;
             }
-
-           
         }
 
         private int GetRowCount(string[,] filesHex, int startingIndex)
@@ -137,7 +149,8 @@ namespace ProcessExplorer.components
         protected void populateArrays(string[,] sizeAndDesc)
         {
             string[] hexValues = new string[0];
-            //Console.WriteLine("PopulateArrays 1 Length:" + hexArray.GetLength(0));
+/*            Console.WriteLine(" ");
+            Console.WriteLine("PopulateArrays 1 Length:" + hexArray.GetLength(0) + " StartPoint:" + StartPoint);*/
 
             /** The following loop will be used to increase the size of the hexValues array. It will determine how many bytes 
              * this header file will need it will then add a new row of 16 after each 
@@ -147,33 +160,35 @@ namespace ProcessExplorer.components
             int hexValuesSize = startingIndex * 16;
 /*            Console.WriteLine("Starting StartinIndex:" + startingIndex + " TotalByteSize:" + totalByteSize + " HexValuesSize:" + hexValues.Length + " ArrayLegnth:"
                 + hexValues.Length + " SizeAndDescLength:" + sizeAndDesc.GetLength(0));*/
+
             for (int i = 0; i < sizeAndDesc.GetLength(0); i++)
             {
                 totalByteSize += Convert.ToInt32(sizeAndDesc[i, 0]); //int.Parse(sizeAndDesc[i].Replace("0x", ""), NumberStyles.HexNumber); // 36
-                //Console.WriteLine("i:" + i + " HexSize:" + hexValuesSize + " totalByteSize:" +  totalByteSize + " NewSize:" + sizeAndDesc[i]);
+                //Console.WriteLine("first i:" + i + " HexSize:" + hexValuesSize + " totalByteSize:" +  totalByteSize + " NewSize:" + sizeAndDesc[i, 0]);
                 if (totalByteSize > hexValuesSize)
                 {
                     int index = hexValuesSize <= 0 ? 0 : (hexValuesSize / 16); // Prevents a divide by 0 error
-                    string[] newArray = processHandler.filesHex[index, 1].Split(' '); // Adds the next row
+                    string[] newArray = processHandler.everything.hexArray[index, 1].Split(' '); // Adds the next row
                     Array.Resize(ref hexValues, hexValues.Length + newArray.Length);
                     Array.Copy(newArray, 0, hexValues, hexValues.Length - newArray.Length, newArray.Length);
                     hexValuesSize += 16; // This adds an extra row aka 16 elements (we call this after getting index to avoid needing to subtract 1)
-                    /*Console.WriteLine("i:" + i + " index:" + index + " HexSize:" + hexValuesSize + " TotalByteSize:" + totalByteSize + " NewArrayLength:" + newArray.Length +
+                    /*Console.WriteLine("first low part i:" + i + " index:" + index + " HexSize:" + hexValuesSize + " TotalByteSize:" + totalByteSize + " NewArrayLength:" + newArray.Length +
                         " Array:" + string.Join(", ", newArray));*/
                 }
             }
             /*            Console.WriteLine("Final StartinIndex:" + startingIndex + " TotalByteSize:" + totalByteSize + " HexValuesSize:" + hexValues.Length + " ArrayLegnth:"
                             + hexValues.Length + "   " + string.Join(", ", hexValues) + " \n");*/
 
+            int skipAmount = StartPoint % 16; // The amount we need to skip before we reach our target byte
             int previousBytesize = 0;
             for (int i = 0; i < hexArray.GetLength(0); i++)
             {
                 int newByteSize = Convert.ToInt32(sizeAndDesc[i, 0]);
                 // I need to subtract StartPoint because I am using the offsets to gage the sizes 
-                int previousOffset = (i > 0 ? (int.Parse(hexArray[i - 1, 0].Replace("0x", ""), NumberStyles.HexNumber)) : 0) - StartPoint;
+                int previousOffset = (i > 0 ? (int.Parse(hexArray[i - 1, 0].Replace("0x", ""), NumberStyles.HexNumber)) - StartPoint : 0) ;
                 int newOffset = previousBytesize + previousOffset;
 
-                string newHexValues = string.Join(" ", hexValues.Skip(i > 0 ? newOffset : 0).Take(newByteSize));
+                string newHexValues = string.Join(" ", hexValues.Skip(newOffset + skipAmount).Take(newByteSize));
                 hexArray[i, 0] = "0x" + (i > 0 ? (newOffset + StartPoint).ToString("X") : (StartPoint).ToString("X"));
                 hexArray[i, 1] = newHexValues;
                 hexArray[i, 2] = sizeAndDesc[i, 1];
@@ -185,7 +200,7 @@ namespace ProcessExplorer.components
                 binaryArray[i, 0] = Convert.ToString(deciOffset, 2); // 2 specifies to use binary
                 binaryArray[i, 1] = string.Join(" ", splitNewHexValues.Select(hex => Convert.ToString(long.Parse(hex, NumberStyles.HexNumber), 2)));
 
-              /*  Console.WriteLine("i:" + i + " Offset:" + hexArray[i, 0] + " Data:" + hexArray[i, 1] + " NewOffset:" + newOffset + " NewByteSize:"
+               /* Console.WriteLine("second i:" + i + " Offset:" + hexArray[i, 0] + " Data:" + hexArray[i, 1] + " NewOffset:" + newOffset + " NewByteSize:"
                     + newByteSize + " PreviousOffset:" + previousOffset + " StartPoint:" + StartPoint);*/
                 previousBytesize = newByteSize;
             }
@@ -193,10 +208,11 @@ namespace ProcessExplorer.components
             // This will set the ending point
             int lastOffset = int.Parse((hexArray[RowSize - 1, 0]).Replace("0x", ""), NumberStyles.HexNumber) - StartPoint;
             int lastByteSize = Convert.ToInt32(sizeAndDesc[RowSize - 1, 0]);
-            EndPoint = lastOffset + lastByteSize;
+            EndPoint = lastOffset + lastByteSize + StartPoint;
+            //Console.WriteLine("EndPoint:" + EndPoint + " LastOffset:" + lastOffset + " LastByteSize:" + lastByteSize);
         }
 
-        public virtual string getHex(int row, int column, bool doubleByte)
+        public string getHex(int row, int column, bool doubleByte)
         {
             if (row > hexArray.GetLength(0) - 1 || column > hexArray.GetLength(1)) return "";
             if (!doubleByte || column == 0 || column == 2) return hexArray[row, column]; // Returns the single byte data, offset, or the description
@@ -205,7 +221,7 @@ namespace ProcessExplorer.components
             return getBigEndian(values);
         }
 
-        public virtual string getBinary(int row, int column, bool doubleByte)
+        public string getBinary(int row, int column, bool doubleByte)
         {
             if (row > binaryArray.GetLength(0) - 1 || column > hexArray.GetLength(1)) return "";
             if(column > 1) return hexArray[row, column]; // This is here because this array does not contain the desc
@@ -217,20 +233,20 @@ namespace ProcessExplorer.components
             return string.Join(" ", bigEndianHex.Split(' ').Select(hexPair => Convert.ToString(Convert.ToInt32(hexPair, 16), 2)));
         }
 
-        public virtual string getDecimal(int row, int column, bool doubleByte)
+        public string getDecimal(int row, int column, bool doubleByte)
         {
             if (row > deciArray.GetLength(0) - 1 || column > hexArray.GetLength(1)) return "";
             if (column > 1) return hexArray[row, column]; // This is here because this array does not contain the desc
             if (column == 0 && processHandler.OffsetsInHex) return hexArray[row, 0]; // This means the offsets should be displayed in hex
             if (!doubleByte || column == 0)
             {
-                Console.WriteLine("SingleByteDeci Row:" + row + " Column:" + column + " Value:" + deciArray[row, column]);
+                //Console.WriteLine("SingleByteDeci Row:" + row + " Column:" + column + " Value:" + deciArray[row, column]);
                 return deciArray[row, column]; // Returns the single byte data or the offset
             }
             // This will reverse the decimal and switch it from little-endian to big-endian
             string[] values = hexArray[row, column].Split(' ');
             string bigEndianHex = getBigEndian(values);
-            Console.WriteLine("BigEndianHex:" + bigEndianHex + " DoubleByte:" + doubleByte + " Row:" + row + " Column:" + column);
+           // Console.WriteLine("BigEndianHex:" + bigEndianHex + " DoubleByte:" + doubleByte + " Row:" + row + " Column:" + column);
             return string.Join(" ", bigEndianHex.Split(' ').Select(hexPair => ulong.Parse(hexPair, NumberStyles.HexNumber)));
         }
 
@@ -242,7 +258,7 @@ namespace ProcessExplorer.components
                 string bigEndian = string.Concat(hexPairs);
 
                 // Check if the result is all "0"s and convert to a single "0"
-                //if (processHandler.RemoveZeros && (bigEndian.Trim('0') == "" || (bigEndian = bigEndian.TrimStart('0')).Length == 0)) bigEndian = "0";
+                if (processHandler.RemoveZeros && (bigEndian.Trim('0') == "" || (bigEndian = bigEndian.TrimStart('0')).Length == 0)) bigEndian = "0";
                 return bigEndian;
             }
 
@@ -258,11 +274,158 @@ namespace ProcessExplorer.components
                     if (processHandler.RemoveZeros)
                     {
                         if (secondPart == "00" && firstPart == "00") combined = "0";
-                       // else if ((combined = combined.TrimStart('0')).Length == 0) combined = "0";
+                        else if ((combined = combined.TrimStart('0')).Length == 0) combined = "0";
                     }
                     return combined;
                 }));
             return reversedHexValues;
+        }
+
+        protected string[] ReadCharacteristics(string hexString)
+        {
+            int characteristicsValue = Convert.ToInt32(hexString, 16);
+            List<string> presentCharacteristics = new List<string>();
+
+            foreach (var pair in characteristics)
+            {
+                int characteristicFlag = pair.Key;
+                string value = pair.Value;
+
+                if ((characteristicsValue & characteristicFlag) != 0)
+                {
+                    string v = "0x" + characteristicFlag.ToString("X") + " - " + value;
+                    presentCharacteristics.Add(v);
+                }
+            }
+
+            return presentCharacteristics.ToArray();
+        }
+
+
+        protected class OptionsForm : Form
+        {
+            private readonly SuperHeader header;
+            private readonly ComboBox comboBox;
+            private readonly DateTimePicker dateTimePicker;
+            private readonly CheckedListBox checkedListBox;
+            private Button okButton;
+
+            public OptionsForm(SuperHeader header, string windowName, int selectedRow, string[] dropDownComboBoxArgs, string[] checkBoxComboBoxArgs, DateTime? initialDateTime)
+            {
+                this.header = header;
+
+                Text = windowName;
+                InitializeComponents();
+
+                if (dropDownComboBoxArgs != null)
+                {
+                    Console.WriteLine("Open Drop Down Menu:" + dropDownComboBoxArgs.Length);
+                    comboBox = new ComboBox();
+                    comboBox.Location = new Point(20, 20);
+
+                    // Calculate the width required for the longest string
+                    int maxWidth = dropDownComboBoxArgs.Max(str => TextRenderer.MeasureText(str, comboBox.Font).Width);
+                    comboBox.Width = Math.Max(maxWidth + 20, 180); // Set minimum width and account for padding
+
+                    comboBox.Items.AddRange(dropDownComboBoxArgs);
+
+                    // Set the selected value 
+                    string selectedValue = GetBigEndianValue(header.hexArray[selectedRow, 1]); // This returns the big endian hex
+                    string matchingString = dropDownComboBoxArgs.FirstOrDefault(str => {
+                            int hexPrefixLength = str.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? 2 : 0;
+                            return str.Length > hexPrefixLength && str.Substring(hexPrefixLength).StartsWith(selectedValue, StringComparison.OrdinalIgnoreCase);
+                    }) ?? ""; // Else return an empty string if no match is found
+                    comboBox.SelectedItem = matchingString;
+
+                    okButton.Location = new Point(comboBox.Right + 10, comboBox.Top); // Position next to the combo box
+                    // Update the width to reflect the size of the ok button and the new width of the combo box
+                    Width = Math.Max(comboBox.Right + okButton.Width + 30, 300); // Account for padding
+                    Controls.Add(comboBox);
+                }
+                else if (checkBoxComboBoxArgs != null && header.characteristics != null)
+                {
+                    Console.WriteLine("Check button: " + string.Join(", ", checkBoxComboBoxArgs) + " \n");
+                    checkedListBox = new CheckedListBox();
+                    checkedListBox.Location = new Point(20, 20);
+
+
+                    int maxWidth = checkBoxComboBoxArgs.Max(str => TextRenderer.MeasureText(str, checkedListBox.Font).Width);
+                    checkedListBox.Width = Math.Max(maxWidth + 20, 180); // Set minimum width and account for padding
+
+                    checkedListBox.Items.AddRange(checkBoxComboBoxArgs);
+
+                    string selectedValue = GetBigEndianValue(header.hexArray[selectedRow, 1]); // This returns the big endian hex
+                    string[] combinedStrings = header.ReadCharacteristics(selectedValue);  //header.characteristics.Select(kv => $"{kv.Key:X4} - {kv.Value}").ToArray();
+                    Console.WriteLine("Current Characteristics: " + string.Join(" ", combinedStrings) );
+                    int i = 0;
+                    foreach (string combinedString in combinedStrings)
+                    {
+                        int indexToCheck = checkedListBox.FindStringExact(combinedString);
+
+                        // Check the item with the specified index
+                        if (indexToCheck != ListBox.NoMatches) checkedListBox.SetItemChecked(indexToCheck, true);
+                        Console.WriteLine("SelectedString:" + combinedString + " Index:" + indexToCheck + " Matched:" + (indexToCheck != ListBox.NoMatches));
+                        i++;
+                    }
+
+                    okButton.Location = new Point(checkedListBox.Right + 10, checkedListBox.Top); // Position next to the combo box
+                    Width = Math.Max(checkedListBox.Right + okButton.Width + 30, 300); // Account for padding
+
+                    // Set the form's height to match the preferred height of the CheckedListBox
+                    ClientSize = new Size(ClientSize.Width, (checkedListBox.PreferredHeight / 2) + 30); // Add extra space
+                    Controls.Add(checkedListBox);
+                }
+                else if(initialDateTime != null)
+                {
+                    Console.WriteLine("Date and time" + initialDateTime);
+
+                    dateTimePicker = new DateTimePicker();
+                    dateTimePicker.Location = new System.Drawing.Point(20, 20);
+                    dateTimePicker.Width = 200; 
+                    dateTimePicker.Format = DateTimePickerFormat.Custom;
+                    dateTimePicker.CustomFormat = "MM/dd/yyyy HH:mm:ss"; 
+
+                    dateTimePicker.Value = (DateTime) initialDateTime;
+
+                    okButton.Location = new Point(dateTimePicker.Right + 10, dateTimePicker.Top); // Position next to the combo box
+                    Width = Math.Max(dateTimePicker.Right + okButton.Width + 30, 300); // Account for padding
+                    Controls.Add(dateTimePicker);
+                }
+
+            }
+
+            private void InitializeComponents()
+            {
+                Size = new Size(300, 100);
+
+                FormBorderStyle = FormBorderStyle.FixedSingle; // Prevents resizing 
+                MaximizeBox = false; 
+                MinimizeBox = false; 
+
+                okButton = new Button();
+                okButton.Text = "OK";
+                okButton.DialogResult = DialogResult.OK;
+                okButton.Click += OkButton_Click;
+
+                // Add controls to the form's controls collection
+                Controls.Add(okButton);
+
+                // Set the AcceptButton property to the OK button
+                AcceptButton = okButton;
+            }
+
+            private void OkButton_Click(object sender, EventArgs e)
+            {
+                Close();
+            }
+
+            public static string GetBigEndianValue(string littleEndian)
+            {
+                string[] values = littleEndian.Split(' ');
+                Array.Reverse(values);
+                string bigEndian = string.Concat(values).Replace(" ", "");
+                return bigEndian;
+            }
         }
 
     }

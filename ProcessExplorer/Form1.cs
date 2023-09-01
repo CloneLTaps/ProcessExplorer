@@ -5,6 +5,7 @@ using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
 using System.IO;
+using ProcessExplorer.components.impl;
 
 namespace ProcessExplorer
 {
@@ -30,6 +31,10 @@ namespace ProcessExplorer
             ToolStripMenuItem setting2 = new ToolStripMenuItem("Display offsets in hex");
             setting2.Click += Settings_Click;
             settingsMenu.Items.Add(setting2);
+
+            ToolStripMenuItem setting3 = new ToolStripMenuItem("Return to top");
+            setting3.Click += Settings_Click;
+            settingsMenu.Items.Add(setting3);
         }
         private void Form1_Load(object sender, EventArgs e)
         {
@@ -56,17 +61,37 @@ namespace ProcessExplorer
 
             const int defaultWidth = 727;
             const int column1StartingWidth = 85;
-            const int column2StartingWidth = 492;
-            const int column3StartingWidth = 150;
+            int column2StartingWidth = 492;
+            int column3StartingWidth = 150;
 
-            // This makes the 2nd column expand faster than the others
-            int difference = newWidth - defaultWidth;
-            int column2Width = column2StartingWidth + (int) (difference * 0.9);
-            int remainingWidth = (int) (difference * 0.1);
+            if(processHandler.GetSuperHeader(selectedComponent).ShrinkDataSection)
+            {
 
-            dataGridView.Columns[0].Width = column1StartingWidth + remainingWidth; // Adjust column indices as needed
-            dataGridView.Columns[1].Width = column2Width;
-            dataGridView.Columns[2].Width = column3StartingWidth; // This wont ever need to expand since there will always be 16 characters
+                column2StartingWidth = column3StartingWidth;
+                column3StartingWidth = 492;
+
+                int difference = newWidth - defaultWidth;
+                int column3Width = column3StartingWidth + (int)(difference * 0.8);
+                int remainingWidth = (int)((difference * 0.1) / 2);
+
+                dataGridView.Columns[0].Width = column1StartingWidth + remainingWidth; // Adjust column indices as needed
+                dataGridView.Columns[1].Width = column2StartingWidth + remainingWidth;
+                dataGridView.Columns[2].Width = column3Width; // This wont ever need to expand since there will always be 16 characters
+               /* Console.WriteLine("Modif 1Width:" + dataGridView.Columns[0].Width + " 2Width:" + dataGridView.Columns[1].Width + " 3Width:" + dataGridView.Columns[2].Width +
+                    " original3Width:" + column3Width + " original2Width:" + column2StartingWidth + " original2Combined:" + (column2StartingWidth + remainingWidth));*/
+            }
+            else
+            {
+                // This makes the 2nd column expand faster than the others
+                int difference = newWidth - defaultWidth;
+                int column2Width = column2StartingWidth + (int)(difference * 0.9);
+                int remainingWidth = (int)(difference * 0.1);
+
+                dataGridView.Columns[0].Width = column1StartingWidth + remainingWidth; // Adjust column indices as needed
+                dataGridView.Columns[1].Width = column2Width;
+                dataGridView.Columns[2].Width = column3StartingWidth; // This wont ever need to expand since there will always be 16 characters
+               // Console.WriteLine("1Width:" + dataGridView.Columns[0].Width + " 2Width:" + dataGridView.Columns[1].Width + " 3Width:" + dataGridView.Columns[2].Width);
+            }
         }
 
         private void Settings_Click(object sender, EventArgs e)
@@ -77,10 +102,13 @@ namespace ProcessExplorer
             
             switch(settingItem.Text)
             {
-                case "Display offsets in hex" : processHandler.OffsetsInHex = settingItem.Checked;
+                case "Display offsets in hex": processHandler.OffsetsInHex = settingItem.Checked;
                     triggerRedraw();
                     break;
                 case "Remove extra zeros": processHandler.RemoveZeros = settingItem.Checked;
+                    triggerRedraw();
+                    break;
+                case "Return to top": processHandler.ReterunToTop = settingItem.Checked;
                     triggerRedraw();
                     break;
             }
@@ -105,7 +133,7 @@ namespace ProcessExplorer
                         {
                             using FileStream fileStream = new FileStream(selectedFilePath, FileMode.Open, FileAccess.Read);
                             processHandler = new ProcessHandler(fileStream);
-                            setup();
+                            Setup();
                         }
                         catch (Exception ex)
                         {
@@ -120,7 +148,7 @@ namespace ProcessExplorer
             }
         }
 
-        private void setup()
+        private void Setup()
         {
             TreeNode rootNode = new TreeNode(processHandler.FileName);
 
@@ -129,7 +157,13 @@ namespace ProcessExplorer
             TreeNode peHeader = new TreeNode("PE Header");
 
             TreeNode optionalPeHeader = new TreeNode("Optional PE Header");
-            peHeader.Nodes.Add(optionalPeHeader);
+            if(processHandler.optionalPeHeader != null) peHeader.Nodes.Add(optionalPeHeader);
+
+            TreeNode optionalPeHeader64 = new TreeNode("Optional PE Header 64");
+            if (processHandler.optionalPeHeader64 != null && ((OptionalPeHeader)processHandler.optionalPeHeader).peThirtyTwoPlus) peHeader.Nodes.Add(optionalPeHeader64);
+
+            TreeNode optionalPeHeader32 = new TreeNode("Optional PE Header 32");
+            if (processHandler.optionalPeHeader32 != null && !((OptionalPeHeader)processHandler.optionalPeHeader).peThirtyTwoPlus) peHeader.Nodes.Add(optionalPeHeader32);
 
             rootNode.Nodes.Add(dosHeader);
             rootNode.Nodes.Add(dosStub);
@@ -140,15 +174,22 @@ namespace ProcessExplorer
             // This will auto check the following settings on startup
             foreach (ToolStripItem item in settingsMenu.Items)
             {
-                if (item is ToolStripMenuItem menuItem && menuItem.Text == "Remove extra zeros")
-                {   
-                    menuItem.Checked = processHandler.RemoveZeros = true;
+                if (item is ToolStripMenuItem menuItem)
+                {
+                    switch(menuItem.Text)
+                    {
+                        case "Remove extra zeros": menuItem.Checked = processHandler.RemoveZeros = true;
+                            break;
+                        case "Return to top":
+                            menuItem.Checked = processHandler.ReterunToTop = true;
+                            break;
+                    }
                 }
             }
 
             // This will trigger the data to be dislayed
             selectedComponent = ProcessHandler.ProcessComponent.EVERYTHING;
-            dataGridView.RowCount = processHandler.filesHex.GetLength(0);
+            dataGridView.RowCount = processHandler.everything.hexArray.GetLength(0);
             dataGridView.CellValueNeeded += dataGridView_CellValueNeeded;
             triggerRedraw();
         }
@@ -252,79 +293,33 @@ namespace ProcessExplorer
                 TreeNode clickedNode = e.Node;
                 string nodeText = clickedNode.Text;
                 if (nodeText.Contains(".exe") || nodeText.Contains(".dll")) nodeText = "everything";
+
+                int previousRowCount = processHandler.GetComponentsRowIndexCount(selectedComponent);
                 ProcessHandler.ProcessComponent selected = ProcessHandler.getProcessComponent(nodeText);
-                //dataGridView.RowCount = processHandler.filesHex.GetLength(0);
+                int newRowCount = processHandler.GetComponentsRowIndexCount(selected);
+  
                 if (selected == selectedComponent) return;
                 selectedComponent = selected;
 
-                Console.WriteLine("Selected:" + selectedComponent + " Rows:" + processHandler.filesHex.GetLength(0));
+                if(processHandler.ReterunToTop || newRowCount > previousRowCount) dataGridView.FirstDisplayedScrollingRowIndex = 0;
+
+                Console.WriteLine("Selected:" + selectedComponent + " Rows:" + dataGridView.RowCount + " RemoveExta:" + processHandler.ReterunToTop);
                 dataGridView.CellValueNeeded += dataGridView_CellValueNeeded;
                 triggerRedraw();
+                Form1_Resize(this, EventArgs.Empty);
             }
         }
         
         private void dataGridView_CellValueNeeded(object sender, DataGridViewCellValueEventArgs e)
         {
-            if (e.RowIndex >= processHandler.filesHex.GetLength(0) || e.ColumnIndex >= processHandler.filesHex.GetLength(1)) return;
+            ProcessHandler.DataType type = hexButton.Checked ? ProcessHandler.DataType.HEX : decimalButton.Checked ? ProcessHandler.DataType.DECIMAL : ProcessHandler.DataType.BINARY;
+            e.Value = processHandler.GetValue(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked, selectedComponent, type);
+        }
 
-            // This will ensure the data is displayed in the correct format
-            if (decimalButton.Checked)
-            {
-                switch (selectedComponent)
-                {
-                    case ProcessHandler.ProcessComponent.EVERYTHING:
-                        // decimal and binary's array both dont contain the ASCI characters
-                        if (e.ColumnIndex < 2) e.Value = processHandler.getDecimal(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
-                        else e.Value = processHandler.filesHex[e.RowIndex, e.ColumnIndex];
-                        break;
-                    case ProcessHandler.ProcessComponent.DOS_HEADER:
-                       // dataGridView.RowCount = processHandler.dosHeader.getRowCount();
-                        e.Value = processHandler.dosHeader.getDecimal(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
-                        break;
-                    case ProcessHandler.ProcessComponent.DOS_STUB:
-                        e.Value = processHandler.dosStub.getDecimal(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
-                        break;
-                    case ProcessHandler.ProcessComponent.PE_HEADER:
-                        e.Value = processHandler.peHeader.getDecimal(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
-                        break;
-                }
-            }
-            else if (binaryButton.Checked)
-            {   
-                switch (selectedComponent)
-                {
-                    case ProcessHandler.ProcessComponent.EVERYTHING:
-                        if (e.ColumnIndex < 2) e.Value = processHandler.getBinary(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
-                        else e.Value = processHandler.filesHex[e.RowIndex, e.ColumnIndex];
-                        break;
-                    case ProcessHandler.ProcessComponent.DOS_HEADER:
-                        e.Value = processHandler.dosHeader.getBinary(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
-                        break;
-                    case ProcessHandler.ProcessComponent.DOS_STUB:
-                        e.Value = processHandler.dosStub.getBinary(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
-                        break;
-                    case ProcessHandler.ProcessComponent.PE_HEADER:
-                        e.Value = processHandler.peHeader.getBinary(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
-                        break;
-                }
-            }
-            else
-            {
-                switch (selectedComponent)
-                {
-                    case ProcessHandler.ProcessComponent.EVERYTHING : e.Value = processHandler.getHex(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
-                        break;
-                    case ProcessHandler.ProcessComponent.DOS_HEADER: // Starting here the total rows of EVERYTHING will excede the size of the bellow arrays
-                        e.Value = processHandler.dosHeader.getHex(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
-                        break;
-                    case ProcessHandler.ProcessComponent.DOS_STUB:
-                        e.Value = processHandler.dosStub.getHex(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
-                        break;
-                    case ProcessHandler.ProcessComponent.PE_HEADER:
-                        e.Value = processHandler.peHeader.getHex(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked);
-                        break;
-                }
-            }
+        /* This will open a custom form for selected cells that */
+        private void dataGridView_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex >= 0 && e.ColumnIndex == 2) processHandler.OpenDescrptionForm(selectedComponent, e.RowIndex);
         }
 
         private void dataGridView_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)

@@ -20,5 +20,10 @@ namespace ProcessExplorer.components
             PopulateNonDescArrays();
         }
 
+        public override void OpenForm(int row)
+        {
+            return; // No custom forms required here
+        }
+
     }
 }

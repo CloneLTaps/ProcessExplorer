@@ -31,9 +31,6 @@ namespace ProcessExplorer
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.treeView = new System.Windows.Forms.TreeView();
             this.dataGridView = new System.Windows.Forms.DataGridView();
-            this.Offset = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.Data = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.ASCII = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.hexLabel = new System.Windows.Forms.Label();
             this.toolStrip = new System.Windows.Forms.ToolStrip();
             this.hexButton = new System.Windows.Forms.ToolStripButton();
@@ -45,8 +42,11 @@ namespace ProcessExplorer
             this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.singleByteButton = new System.Windows.Forms.ToolStripButton();
             this.doubleByteButton = new System.Windows.Forms.ToolStripButton();
-            this.settingsLabel = new System.Windows.Forms.Label();
             this.toolStripSeparator3 = new System.Windows.Forms.ToolStripSeparator();
+            this.settingsLabel = new System.Windows.Forms.Label();
+            this.Offset = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Data = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.ASCII = new System.Windows.Forms.DataGridViewTextBoxColumn();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -124,33 +124,7 @@ namespace ProcessExplorer
             this.dataGridView.Size = new System.Drawing.Size(727, 517);
             this.dataGridView.TabIndex = 0;
             this.dataGridView.VirtualMode = true;
-            // 
-            // Offset
-            // 
-            this.Offset.DataPropertyName = "Offset";
-            this.Offset.FillWeight = 1F;
-            this.Offset.HeaderText = "";
-            this.Offset.MaxInputLength = 30;
-            this.Offset.MinimumWidth = 85;
-            this.Offset.Name = "Offset";
-            this.Offset.ReadOnly = true;
-            // 
-            // Data
-            // 
-            this.Data.DataPropertyName = "Data";
-            this.Data.FillWeight = 3F;
-            this.Data.HeaderText = "";
-            this.Data.MinimumWidth = 400;
-            this.Data.Name = "Data";
-            // 
-            // ASCII
-            // 
-            this.ASCII.DataPropertyName = "ASCII";
-            this.ASCII.FillWeight = 1F;
-            this.ASCII.HeaderText = "";
-            this.ASCII.MaxInputLength = 16;
-            this.ASCII.MinimumWidth = 150;
-            this.ASCII.Name = "ASCII";
+            this.dataGridView.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridView_CellContentClick);
             // 
             // hexLabel
             // 
@@ -279,6 +253,11 @@ namespace ProcessExplorer
     "ll be converted to their big-endian value. Please note\r\nthat ASCII characters sh" +
     "ould be read in their single byte form.";
             // 
+            // toolStripSeparator3
+            // 
+            this.toolStripSeparator3.Name = "toolStripSeparator3";
+            this.toolStripSeparator3.Size = new System.Drawing.Size(6, 25);
+            // 
             // settingsLabel
             // 
             this.settingsLabel.BackColor = System.Drawing.Color.White;
@@ -292,10 +271,32 @@ namespace ProcessExplorer
             this.settingsLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.settingsLabel.Click += new System.EventHandler(this.settingsLabel_Click);
             // 
-            // toolStripSeparator3
+            // Offset
             // 
-            this.toolStripSeparator3.Name = "toolStripSeparator3";
-            this.toolStripSeparator3.Size = new System.Drawing.Size(6, 25);
+            this.Offset.DataPropertyName = "Offset";
+            this.Offset.FillWeight = 1F;
+            this.Offset.HeaderText = "";
+            this.Offset.MaxInputLength = 30;
+            this.Offset.MinimumWidth = 85;
+            this.Offset.Name = "Offset";
+            this.Offset.ReadOnly = true;
+            // 
+            // Data
+            // 
+            this.Data.DataPropertyName = "Data";
+            this.Data.FillWeight = 3F;
+            this.Data.HeaderText = "";
+            this.Data.MinimumWidth = 150;
+            this.Data.Name = "Data";
+            // 
+            // ASCII
+            // 
+            this.ASCII.DataPropertyName = "ASCII";
+            this.ASCII.FillWeight = 1F;
+            this.ASCII.HeaderText = "";
+            this.ASCII.MaxInputLength = 16;
+            this.ASCII.MinimumWidth = 150;
+            this.ASCII.Name = "ASCII";
             // 
             // Form1
             // 
@@ -328,9 +329,6 @@ namespace ProcessExplorer
         private System.Windows.Forms.SplitContainer splitContainer1;
         private System.Windows.Forms.TreeView treeView;
         private System.Windows.Forms.DataGridView dataGridView;
-        private DataGridViewTextBoxColumn Offset;
-        private DataGridViewTextBoxColumn Data;
-        private DataGridViewTextBoxColumn ASCII;
         private Label hexLabel;
         private ToolStrip toolStrip;
         private ToolStripButton hexButton;
@@ -344,6 +342,9 @@ namespace ProcessExplorer
         private ToolStripButton doubleByteButton;
         private Label settingsLabel;
         private ToolStripSeparator toolStripSeparator3;
+        private DataGridViewTextBoxColumn Offset;
+        private DataGridViewTextBoxColumn Data;
+        private DataGridViewTextBoxColumn ASCII;
     }
 }
 
