@@ -18,7 +18,7 @@ namespace ProcessExplorer
 
         public bool ReterunToTop { get; set; }
 
-        public readonly SuperHeader everything, dosHeader, dosStub, peHeader, optionalPeHeader, optionalPeHeader64, optionalPeHeader32;
+        public readonly SuperHeader everything, dosHeader, dosStub, peHeader, optionalPeHeader, optionalPeHeader64, optionalPeHeader32, optionalPeHeaderDataDirectories;
         private readonly FileStream file;
 
         public bool is64Bit;
@@ -54,8 +54,13 @@ namespace ProcessExplorer
                 {   // This means our optional header is valid and that we are using 64 bit headers
                     Console.WriteLine("Starting PE Optional Header 64");
                     optionalPeHeader64 = new OptionalPeHeader64(this, optionalPeHeader.EndPoint);
+                    optionalPeHeaderDataDirectories = new OptionalHeaderDataDirectories(this, optionalPeHeader64.EndPoint);
                 }
-                else optionalPeHeader32 = new OptionalPeHeader32(this, optionalPeHeader.EndPoint);
+                else
+                {
+                    optionalPeHeader32 = new OptionalPeHeader32(this, optionalPeHeader.EndPoint);
+                    optionalPeHeaderDataDirectories = new OptionalHeaderDataDirectories(this, optionalPeHeader32.EndPoint);
+                }
             }
             else optionalPeHeader = null; // This means we dont have a valid optional header
 

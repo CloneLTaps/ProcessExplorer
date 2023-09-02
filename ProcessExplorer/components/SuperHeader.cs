@@ -310,7 +310,7 @@ namespace ProcessExplorer.components
             private readonly CheckedListBox checkedListBox;
             private Button okButton;
 
-            public OptionsForm(SuperHeader header, string windowName, int selectedRow, string[] dropDownComboBoxArgs, string[] checkBoxComboBoxArgs, DateTime? initialDateTime)
+            public OptionsForm(SuperHeader header, string? bigEndianHex, string windowName, int selectedRow, string[] dropDownComboBoxArgs, string[] checkBoxComboBoxArgs, DateTime? initialDateTime)
             {
                 this.header = header;
 
@@ -319,7 +319,7 @@ namespace ProcessExplorer.components
 
                 if (dropDownComboBoxArgs != null)
                 {
-                    Console.WriteLine("Open Drop Down Menu:" + dropDownComboBoxArgs.Length);
+                    //Console.WriteLine("Open Drop Down Menu:" + dropDownComboBoxArgs.Length);
                     comboBox = new ComboBox();
                     comboBox.Location = new Point(20, 20);
 
@@ -330,12 +330,14 @@ namespace ProcessExplorer.components
                     comboBox.Items.AddRange(dropDownComboBoxArgs);
 
                     // Set the selected value 
-                    string selectedValue = GetBigEndianValue(header.hexArray[selectedRow, 1]); // This returns the big endian hex
+                    string selectedValue = bigEndianHex != null ? bigEndianHex : GetBigEndianValue(header.hexArray[selectedRow, 1]); // This returns the big endian hex
                     string matchingString = dropDownComboBoxArgs.FirstOrDefault(str => {
-                            int hexPrefixLength = str.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? 2 : 0;
-                            return str.Length > hexPrefixLength && str.Substring(hexPrefixLength).StartsWith(selectedValue, StringComparison.OrdinalIgnoreCase);
+                        int hexPrefixLength = str.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? 2 : 0;
+                       // Console.WriteLine("str:" + str + " HexLength:" + hexPrefixLength + " SelectedValue:" + selectedValue);
+                        return str.Length > hexPrefixLength && str.Substring(hexPrefixLength).StartsWith(selectedValue, StringComparison.OrdinalIgnoreCase);
                     }) ?? ""; // Else return an empty string if no match is found
                     comboBox.SelectedItem = matchingString;
+                    //Console.WriteLine("MatchingString:" + matchingString);
 
                     okButton.Location = new Point(comboBox.Right + 10, comboBox.Top); // Position next to the combo box
                     // Update the width to reflect the size of the ok button and the new width of the combo box
@@ -344,19 +346,18 @@ namespace ProcessExplorer.components
                 }
                 else if (checkBoxComboBoxArgs != null && header.characteristics != null)
                 {
-                    Console.WriteLine("Check button: " + string.Join(", ", checkBoxComboBoxArgs) + " \n");
+                    //Console.WriteLine("Check button: " + string.Join(", ", checkBoxComboBoxArgs) + " \n");
                     checkedListBox = new CheckedListBox();
                     checkedListBox.Location = new Point(20, 20);
-
 
                     int maxWidth = checkBoxComboBoxArgs.Max(str => TextRenderer.MeasureText(str, checkedListBox.Font).Width);
                     checkedListBox.Width = Math.Max(maxWidth + 20, 180); // Set minimum width and account for padding
 
                     checkedListBox.Items.AddRange(checkBoxComboBoxArgs);
 
-                    string selectedValue = GetBigEndianValue(header.hexArray[selectedRow, 1]); // This returns the big endian hex
+                    string selectedValue = bigEndianHex != null ? bigEndianHex : GetBigEndianValue(header.hexArray[selectedRow, 1]); // This returns the big endian hex
                     string[] combinedStrings = header.ReadCharacteristics(selectedValue);  //header.characteristics.Select(kv => $"{kv.Key:X4} - {kv.Value}").ToArray();
-                    Console.WriteLine("Current Characteristics: " + string.Join(" ", combinedStrings) );
+                    //Console.WriteLine("Current Characteristics: " + string.Join(" ", combinedStrings) );
                     int i = 0;
                     foreach (string combinedString in combinedStrings)
                     {
@@ -364,7 +365,7 @@ namespace ProcessExplorer.components
 
                         // Check the item with the specified index
                         if (indexToCheck != ListBox.NoMatches) checkedListBox.SetItemChecked(indexToCheck, true);
-                        Console.WriteLine("SelectedString:" + combinedString + " Index:" + indexToCheck + " Matched:" + (indexToCheck != ListBox.NoMatches));
+                        //Console.WriteLine("SelectedString:" + combinedString + " Index:" + indexToCheck + " Matched:" + (indexToCheck != ListBox.NoMatches));
                         i++;
                     }
 
@@ -372,7 +373,7 @@ namespace ProcessExplorer.components
                     Width = Math.Max(checkedListBox.Right + okButton.Width + 30, 300); // Account for padding
 
                     // Set the form's height to match the preferred height of the CheckedListBox
-                    ClientSize = new Size(ClientSize.Width, (checkedListBox.PreferredHeight / 2) + 30); // Add extra space
+                    ClientSize = new Size(ClientSize.Width, (checkedListBox.PreferredHeight / 2) + 70); // Add extra space
                     Controls.Add(checkedListBox);
                 }
                 else if(initialDateTime != null)

@@ -27,7 +27,7 @@ namespace ProcessExplorer.components.impl
             // if the magic bit does not equal 0x10B or 0x20B then this is not a valid optional header
             // if the magic bit is equal to 0x10B then we have a 32 bit header while 0x20B is for 64 bit
             
-            string hex = SuperHeader.OptionsForm.GetBigEndianValue(hexArray[0, 1]);
+            string hex = OptionsForm.GetBigEndianValue(hexArray[0, 1]);
             int magicBit = int.Parse(hex, NumberStyles.HexNumber);
             if (magicBit == 0x10B || magicBit == 0x20B) validHeader = true;
             peThirtyTwoPlus = (magicBit == 0x20B);

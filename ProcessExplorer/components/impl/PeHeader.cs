@@ -65,7 +65,7 @@ namespace ProcessExplorer.components
                     "0x500 - IMAGE_FILE_MACHINE_TRICORE (TriCore, 32-bit)", "0x5A0 - IMAGE_FILE_MACHINE_CEF (CEF, 32-bit)", "0x600 - IMAGE_FILE_MACHINE_EBC",
                 "0x9041 - IMAGE_FILE_MACHINE_M32R (M32R, 32-bit)", "0xC0EE - IMAGE_FILE_MACHINE_CEE (CEE, 32-bit)"};
 
-                using (OptionsForm optionsForm = new OptionsForm(this, "Machine", row, options, null, null))
+                using (OptionsForm optionsForm = new OptionsForm(this, null, "Machine", row, options, null, null))
                 {
                     DialogResult result = optionsForm.ShowDialog();
                     if (result == DialogResult.OK)
@@ -83,7 +83,7 @@ namespace ProcessExplorer.components
                 DateTime unixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
                 DateTime dateTime = unixEpoch.AddSeconds(unixTimestamp);
 
-                using (OptionsForm optionsForm = new OptionsForm(this, "Date and Time", row, null, null, dateTime))
+                using (OptionsForm optionsForm = new OptionsForm(this, null, "Date and Time", row, null, null, dateTime))
                 {
                     DialogResult result = optionsForm.ShowDialog();
                     if (result == DialogResult.OK)
@@ -97,7 +97,7 @@ namespace ProcessExplorer.components
             {
                 string[] combinedStrings = characteristics.Select(kv => $"{"0x" + (kv.Key).ToString("X")} - {kv.Value}").ToArray();
 
-                using (OptionsForm optionsForm = new OptionsForm(this, "Characteristics", row, null, combinedStrings, null))
+                using (OptionsForm optionsForm = new OptionsForm(this, null, "Characteristics", row, null, combinedStrings, null))
                 {
                     DialogResult result = optionsForm.ShowDialog();
                     if (result == DialogResult.OK)
