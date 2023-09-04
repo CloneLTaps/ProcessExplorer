@@ -18,7 +18,7 @@ namespace ProcessExplorer.components.impl
             sizeAndDesc[4, 0] = "4"; sizeAndDesc[4, 1] = "SizeOfInitializedData (4 bytes) size of initialized .data section.";
             sizeAndDesc[5, 0] = "4"; sizeAndDesc[5, 1] = "SizeOfUninitializedData (4 bytes) size of uninitialized .data section.";
             sizeAndDesc[6, 0] = "4"; sizeAndDesc[6, 1] = "AddressOfEntryPoint (4 bytes) relative virtual address entry point.";
-            sizeAndDesc[7, 0] = "4"; sizeAndDesc[7, 1] = "BaseOfCode (4 bytes) points to starting relative virtual address of the .text section.";
+            sizeAndDesc[7, 0] = "4"; sizeAndDesc[7, 1] = "BaseOfCode (4 bytes) points to starting RVA of the .text section.";
 
             StartPoint = startingPoint; // Must set the start point before populating the arrays
             Console.WriteLine("Optional PeHeader StartPoint:" + startingPoint);

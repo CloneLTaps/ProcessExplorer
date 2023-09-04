@@ -46,6 +46,8 @@ namespace ProcessExplorer.components
                 { 0x4000, "IMAGE_FILE_UP_SYSTEM_ONLY" },
                 { 0x8000, "IMAGE_FILE_BYTES_REVERSED_HI" }
             };
+
+            Console.WriteLine("PE Header" + " StartPoint:" + StartPoint + " EndPoint:" + EndPoint);
         }
 
         public override void OpenForm(int row)

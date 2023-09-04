@@ -52,22 +52,22 @@ namespace ProcessExplorer.components
 
         protected void PopulateNonDescArrays()
         {
-            //Console.WriteLine(" ");
+            Console.WriteLine(" ");
             int startingIndex = StartPoint <= 0 ? 0 : (int) Math.Floor(StartPoint / 16.0); // Theres 16 bytes of hex per row
             int totalByteSize = StartPoint;
             int hexValuesSize = startingIndex * 16;
-            //Console.WriteLine("Starting StartinIndex:" + startingIndex + " TotalByteSize:" + totalByteSize + " StartPoint:" + StartPoint + " EndPoint:" + EndPoint);
+           // Console.WriteLine("Starting " + this.GetType().Name + " StartinIndex:" + startingIndex + " TotalByteSize:" + totalByteSize + " StartPoint:" + StartPoint + " EndPoint:" + EndPoint);
 
             // I need to first redefine the size of the arrays
             string[,] filesHex = processHandler.everything.hexArray;
             int rowSize = GetRowCount(filesHex, startingIndex);
-            //Console.WriteLine("RowCount:" + rowSize);
+           // Console.WriteLine("RowCount:" + rowSize);
             hexArray = new string[rowSize, ColumnSize];
             binaryArray = new string[rowSize, ColumnSize - 1]; // I subtract 1 here because theres no point saving the descriptions more than once
             deciArray = new string[rowSize, ColumnSize - 1];   // I subtract 1 here because theres no point saving the descriptions more than once
 
-            int rowStartingPoint = Convert.ToInt32(filesHex[startingIndex, 0], 16);
-            //Console.WriteLine("RowStartingPoint:" + rowStartingPoint);
+            int rowStartingPoint = Convert.ToInt32(filesHex[startingIndex, 0], 16); // defines the offset in the starting row
+           // Console.WriteLine("RowStartingPoint:" + rowStartingPoint);
 
             long offsetSum;
             string[] splitHexData;
@@ -75,7 +75,7 @@ namespace ProcessExplorer.components
             for (int i = startingIndex; i < filesHex.GetLength(0); i++)
             {
                 string[] dataRow = filesHex[i, 1].Split(' ');
-                //Console.WriteLine("Length:" + dataRow.Length + " DataRow:" + string.Join(" ", dataRow));
+                //Console.WriteLine("Length:" + dataRow.Length + " DataRow:" + string.Join(" ", dataRow) + " OurArrayIndex:" + ourArrayIndex);
                 string correctedHexData = "";
                 int rowOffset = -1;
                 for(int j = 0; j < 16; j++)
@@ -86,7 +86,7 @@ namespace ProcessExplorer.components
                     {
                         correctedHexData += dataRow[j] + " ";
                         offsetSum = int.Parse(filesHex[i, 0].Replace("0x", ""), NumberStyles.HexNumber) + (rowOffset < 0 ? 0 : rowOffset);
-                        //Console.WriteLine("Exiting OffsetSum:" + offsetSum);
+                        //Console.WriteLine("Exiting OffsetSum:" + offsetSum + " OurArrayIndex:" + ourArrayIndex);
                         hexArray[ourArrayIndex, 0] = "0x" + (offsetSum).ToString("X");
                         hexArray[ourArrayIndex, 1] = correctedHexData;
                         hexArray[ourArrayIndex, 2] = filesHex[i, 2];
@@ -95,10 +95,10 @@ namespace ProcessExplorer.components
                         deciArray[ourArrayIndex, 0] = offsetSum.ToString();
                         deciArray[ourArrayIndex, 1] = string.Join(" ", Array.ConvertAll(splitHexData, hex => long.Parse(hex, NumberStyles.HexNumber)));
 
-                        //Console.WriteLine("NonDescArray Row:" + ourArrayIndex + " Offset:" + deciArray[ourArrayIndex, 0] + " Data:" + deciArray[ourArrayIndex, 1]);
+                       // Console.WriteLine("NonDescArray Row:" + ourArrayIndex + " Offset:" + deciArray[ourArrayIndex, 0] + " Data:" + deciArray[ourArrayIndex, 1]);
                         binaryArray[ourArrayIndex, 0] = Convert.ToString(offsetSum, 2);
                         binaryArray[ourArrayIndex, 1] = string.Join(" ", splitHexData.Select(hex => Convert.ToString(long.Parse(hex, NumberStyles.HexNumber), 2)));
-                        //Console.WriteLine("Leaving Early OffsetSum:" + offsetSum + " Offset:" + deciArray[ourArrayIndex, 0] + " HexData:" + deciArray[ourArrayIndex, 1] + " Value:" + value);
+                       // Console.WriteLine("Leaving Early OffsetSum:" + offsetSum + " Offset:" + deciArray[ourArrayIndex, 0] + " HexData:" + deciArray[ourArrayIndex, 1] + " Value:" + value);
                         return;
                     }
 
@@ -108,8 +108,8 @@ namespace ProcessExplorer.components
                     correctedHexData += dataRow[j] + " ";
                 }
 
-                //Console.WriteLine("FilesHexRowLength:" + filesHex.GetLength(0) + " HexRowLength:" + hexArray.GetLength(0) + " HexColumnLength:" + 
-                //   hexArray.GetLength(1) + " RowOffset:" + rowOffset + " i:" + i + " OurArrayIndex:" + ourArrayIndex);
+               /* Console.WriteLine("FilesHexRowLength:" + filesHex.GetLength(0) + " HexRowLength:" + hexArray.GetLength(0) + " HexColumnLength:" + 
+                   hexArray.GetLength(1) + " RowOffset:" + rowOffset + " i:" + i + " OurArrayIndex:" + ourArrayIndex);*/
                 offsetSum = long.Parse(filesHex[i, 0].Replace("0x", ""), NumberStyles.HexNumber) + (rowOffset < 0 ? 0 : rowOffset);
                 hexArray[ourArrayIndex, 0] = "0x" + (offsetSum).ToString("X");
                 hexArray[ourArrayIndex, 1] = correctedHexData;
@@ -301,6 +301,64 @@ namespace ProcessExplorer.components
             return presentCharacteristics.ToArray();
         }
 
+        public enum SectionTypes
+        {
+            TEXT, DATA, RSRC, RDATA, PDATA, IDATA, EDATA, XDATA, SXDATA, RELOC, TLS, DEBUG, ARCH, BSS, CORMETA, CRT, 
+            BIND, CET, SDATA, GLUE_7T, SBSS, SBDATA, SBSS_M, SBDATA_M, RODATA1, VSDATA, TBSS, TDATA, VFDATA, GLUE_7,
+            VITAL, ROBASE, RANDOM, BOLT,
+            NULL_SECTION_TYPE
+        }
+
+        public static SectionTypes GetSectionType(string name)
+        {
+            return name.ToLower() switch
+            {
+                ".text" => SectionTypes.TEXT,
+                ".rsrc" => SectionTypes.RSRC,
+                ".data" => SectionTypes.DATA,
+                ".rdata" => SectionTypes.RDATA,
+                ".pdata" => SectionTypes.PDATA,
+                ".idata" => SectionTypes.IDATA,
+                ".edata" => SectionTypes.EDATA,
+                ".xdata" => SectionTypes.XDATA,
+                ".sxdata" => SectionTypes.SXDATA,
+                ".reloc" => SectionTypes.RELOC,
+                ".tls" => SectionTypes.TLS,
+                ".debug" => SectionTypes.DEBUG,
+                ".arch" => SectionTypes.ARCH,
+                ".bss" => SectionTypes.BSS,
+                ".cormeta" => SectionTypes.CORMETA,
+                ".crt" => SectionTypes.CRT,
+                ".bind" => SectionTypes.BIND,
+                ".cet" => SectionTypes.CET,
+                ".sdata" => SectionTypes.SDATA,
+                ".glue_7t" => SectionTypes.GLUE_7T,
+                ".sbss" => SectionTypes.SBSS,
+                ".sbdata" => SectionTypes.SBDATA,
+                ".sbss$" => SectionTypes.SBSS_M,
+                ".sbdata$" => SectionTypes.SBDATA_M,
+                ".rodata1" => SectionTypes.RODATA1,
+                ".vsdata" => SectionTypes.VSDATA,
+                ".tbss" => SectionTypes.TBSS,
+                ".tdata" => SectionTypes.TDATA,
+                ".vfdata" => SectionTypes.VFDATA,
+                ".glue_7" => SectionTypes.GLUE_7,
+                ".vital" => SectionTypes.VITAL,
+                ".robase" => SectionTypes.ROBASE,
+                ".random" => SectionTypes.RANDOM,
+                ".bolt" => SectionTypes.BOLT,
+                _ => SectionTypes.NULL_SECTION_TYPE,
+            };
+        }
+
+        public static string GetSectionString(SectionTypes type)
+        {
+            if (type == SectionTypes.NULL_SECTION_TYPE) return "";
+
+            string typename = "." + type.ToString().ToLower().Replace("_m", "$");
+            return typename;
+        }
+
 
         protected class OptionsForm : Form
         {
@@ -310,6 +368,7 @@ namespace ProcessExplorer.components
             private readonly CheckedListBox checkedListBox;
             private Button okButton;
 
+#pragma warning disable CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
             public OptionsForm(SuperHeader header, string? bigEndianHex, string windowName, int selectedRow, string[] dropDownComboBoxArgs, string[] checkBoxComboBoxArgs, DateTime? initialDateTime)
             {
                 this.header = header;
@@ -394,6 +453,7 @@ namespace ProcessExplorer.components
                 }
 
             }
+#pragma warning restore CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
 
             private void InitializeComponents()
             {

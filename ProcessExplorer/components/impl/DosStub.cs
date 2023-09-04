@@ -15,9 +15,9 @@ namespace ProcessExplorer.components
             Array.Reverse(hexBytes); // Reverse the order of bytes
             string hexEndPoint = string.Concat(hexBytes);
 
-            Console.WriteLine("DosStub EndPoint:" + hexEndPoint);
             EndPoint = Convert.ToInt32(hexEndPoint.Replace("0x", ""), 16); 
             PopulateNonDescArrays();
+            Console.WriteLine("DosStub EndPoint:" + hexEndPoint + " StartPoint:" + StartPoint + " EndPoint:" + EndPoint);
         }
 
         public override void OpenForm(int row)

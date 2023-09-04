@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using System.IO;
 using ProcessExplorer.components.impl;
+using ProcessExplorer.components;
 
 namespace ProcessExplorer
 {
@@ -61,7 +62,7 @@ namespace ProcessExplorer
 
             const int defaultWidth = 727;
             const int column1StartingWidth = 85;
-            int column2StartingWidth = 492;
+            int column2StartingWidth = 492; 
             int column3StartingWidth = 150;
 
             if(processHandler.GetSuperHeader(selectedComponent).ShrinkDataSection)
@@ -160,14 +161,54 @@ namespace ProcessExplorer
             if(processHandler.optionalPeHeader != null) peHeader.Nodes.Add(optionalPeHeader);
 
             TreeNode optionalPeHeader64 = new TreeNode("Optional PE Header 64");
-            if (processHandler.optionalPeHeader64 != null && ((OptionalPeHeader)processHandler.optionalPeHeader).peThirtyTwoPlus) peHeader.Nodes.Add(optionalPeHeader64);
+            if (processHandler.optionalPeHeader64 != null && ((OptionalPeHeader)processHandler.optionalPeHeader).peThirtyTwoPlus)
+            {
+                peHeader.Nodes.Add(optionalPeHeader64);
+                TreeNode optionalPeHeaderDataDirectories = new TreeNode("Optional PE Header Data Directories");
+                peHeader.Nodes.Add(optionalPeHeaderDataDirectories);
+            }
 
             TreeNode optionalPeHeader32 = new TreeNode("Optional PE Header 32");
-            if (processHandler.optionalPeHeader32 != null && !((OptionalPeHeader)processHandler.optionalPeHeader).peThirtyTwoPlus) peHeader.Nodes.Add(optionalPeHeader32);
+            if (processHandler.optionalPeHeader32 != null && !((OptionalPeHeader)processHandler.optionalPeHeader).peThirtyTwoPlus)
+            {
+                peHeader.Nodes.Add(optionalPeHeader32);
+                TreeNode optionalPeHeaderDataDirectories = new TreeNode("Optional PE Header Data Directories");
+                peHeader.Nodes.Add(optionalPeHeaderDataDirectories);
+            }
+
+            TreeNode mainSectionNode = new TreeNode("Sections");
+
+            foreach (var map in processHandler.sectionHeaders)
+            {
+                SuperHeader.SectionTypes type = map.Key;
+                List<SuperHeader> headerList = map.Value;
+
+                TreeNode sectionNode = new TreeNode("");
+
+                int count = 0;
+                foreach (SuperHeader section in headerList)
+                {
+                    string sectionNodeText = SuperHeader.GetSectionString(((ISection)section).GetSectionType()) + " Section ";
+                    Console.WriteLine("Adding a Node count:" + count + " Text:" + sectionNodeText + "Length:" + headerList.Count);
+                    if (count++ == 0) sectionNode.Text = sectionNodeText + "Header";
+                    else
+                    {   // This will add the body nodes
+                        TreeNode sectionBodyNode = new TreeNode("")
+                        {
+                            Text = sectionNodeText + "Body"
+                        };
+                        sectionNode.Nodes.Add(sectionBodyNode);
+                        Console.WriteLine("Added a Node Body");
+                    }
+                }
+
+                mainSectionNode.Nodes.Add(sectionNode); // Add the main section node for each section to our parent node
+            }
 
             rootNode.Nodes.Add(dosHeader);
             rootNode.Nodes.Add(dosStub);
             rootNode.Nodes.Add(peHeader);
+            rootNode.Nodes.Add(mainSectionNode);
             //Next I need to check for sections and add them to the root node
             treeView.Nodes.Add(rootNode);
 
@@ -236,7 +277,7 @@ namespace ProcessExplorer
                 {
                     relativeOffsetButton.Checked = false;
                     // RelativeOffset and FileOffsets are the same if you are viewing everything or DOS Headers
-                    if (selectedComponent != ProcessHandler.ProcessComponent.EVERYTHING && selectedComponent != ProcessHandler.ProcessComponent.DOS_HEADER)
+                    if (selectedComponent != ProcessHandler.ProcessComponent.EVERYTHING && selectedComponent != ProcessHandler.ProcessComponent.DOS_STUB)
                         triggerRedraw();
                 }
                 fileOffsetButton.Checked = true;
@@ -247,7 +288,7 @@ namespace ProcessExplorer
                 {
                     fileOffsetButton.Checked = false;
                     // RelativeOffset and FileOffsets are the same if you are viewing everything or DOS Headers
-                    if (selectedComponent != ProcessHandler.ProcessComponent.EVERYTHING && selectedComponent != ProcessHandler.ProcessComponent.DOS_HEADER)
+                    if (selectedComponent != ProcessHandler.ProcessComponent.EVERYTHING && selectedComponent != ProcessHandler.ProcessComponent.DOS_STUB)
                         triggerRedraw();
                 }
                 relativeOffsetButton.Checked = true;
