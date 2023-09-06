@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Text;
 using System.Data;
 using System.Linq;
 using System.IO;
@@ -18,7 +17,9 @@ namespace ProcessExplorer
 
         public bool ReterunToTop { get; set; }
 
-        public readonly SuperHeader everything, dosHeader, dosStub, peHeader, optionalPeHeader, optionalPeHeader64, optionalPeHeader32, optionalPeHeaderDataDirectories;
+        public OffsetType Offset { get; set; }
+
+        public readonly SuperHeader everything, dosHeader, dosStub, peHeader, optionalPeHeader, optionalPeHeader64, optionalPeHeader32, optionalPeHeaderDataDirectories, sections;
         public readonly Dictionary<SuperHeader.SectionTypes, List<SuperHeader>> sectionHeaders = new Dictionary<SuperHeader.SectionTypes, List<SuperHeader>>();
         private readonly FileStream file;
 
@@ -30,6 +31,8 @@ namespace ProcessExplorer
             this.file = file;
             FileName = new FileInfo(file.Name).Name;
 
+            Offset = OffsetType.FILE_OFFSET;
+
             // This specifies that the array will be 16 across and (file.Length / 16) down
             // I am precomputing these values so that I dont have to recompute them when the user switches windows or modes
             string[,] filesHex = new string[(int)Math.Ceiling(file.Length / 16.0), 3];
@@ -38,15 +41,17 @@ namespace ProcessExplorer
 
             populateArrays(filesHex, filesDecimal, filesBinary); // Passes a reference to the memory address of the above arrays instead of their values
 
-            int endPoint = 0; // Will be used for the sections
-
             everything = new Everything(this, filesHex, filesDecimal, filesBinary);
-            dosHeader = new DosHeader(this);
-            dosStub = new DosStub(this);
-            peHeader = new PeHeader(this, dosStub.EndPoint); // I am making this a paramter to aid when I aid support for Rich Headers which come after the DosStub and before this
+            if (everything.EndPoint <= 2) return; // The file is esentially blank  
+
+            if ((dosHeader = new DosHeader(this)).FailedToInitlize) return;                 // This means this is not a PE
+            if ((dosStub = new DosStub(this)).FailedToInitlize) return;                     // This means our PE does not contain a dos stub which is not normal
+            // Possible To:Do look into finding a PE that uses RichHeaders since those can sometimes appear before the PE Header
+            if ((peHeader = new PeHeader(this, dosStub.EndPoint)).FailedToInitlize) return; // This means our PE Header is either too short or does not contain the signature
 
             optionalPeHeader = new OptionalPeHeader(this, peHeader.EndPoint);
 
+            int endPoint;
             if (((OptionalPeHeader)optionalPeHeader).validHeader)
             { // This means we most likely have either 64 or 32 bit option headers
                 if (((OptionalPeHeader)optionalPeHeader).peThirtyTwoPlus)
@@ -67,9 +72,10 @@ namespace ProcessExplorer
                 endPoint = peHeader.EndPoint;
             }
 
+            sections = new Sections(this, endPoint);
+
             while(endPoint >= 0) // This will add all of the section headers
             {
-                Console.WriteLine("\t previousEndPoint:" + endPoint);
                 endPoint = AssignSectionHeaders(filesHex, endPoint);
             }
 
@@ -95,8 +101,6 @@ namespace ProcessExplorer
 
                         if (totalCount++ > 8) return -1; // If we dont find it then we must of found all of the section headers
 
-                        Console.WriteLine("\t ASCII:" + ascii);
-
                         if (SuperHeader.GetSectionType(ascii) != SuperHeader.SectionTypes.NULL_SECTION_TYPE)
                         {
                             SuperHeader.SectionTypes sectionType = SuperHeader.GetSectionType(ascii);
@@ -105,7 +109,6 @@ namespace ProcessExplorer
                             headerList.Add(header);
                             headerList.Add(new SectionBody(this, header.bodyStartPoint, header.bodyEndPoint, sectionType));
 
-                            Console.WriteLine("HEADER:" + header.GetSectionType().ToString() );
                             sectionHeaders.Add(sectionType, headerList);
                             return header.EndPoint;
                         }
@@ -195,7 +198,6 @@ namespace ProcessExplorer
 
                     down++;
                 }
-                Console.WriteLine("DownCount:" + down);
             }
             catch (Exception ex)
             {
@@ -203,26 +205,33 @@ namespace ProcessExplorer
             }
         }
 
-
-        void ModifyExecutable(string originalPath, string newPath)
+        public void SaveFile(string outputPath)
         {
-            if (file == null) return;
+            int length = everything.hexArray.GetLength(0);
+            string[] hexDataArray = new string[length];
+
             try
             {
-                // Read the original executable into a byte array
-                byte[] originalBytes = File.ReadAllBytes(originalPath);
+                using (FileStream outputFileStream = new FileStream(outputPath, FileMode.Create))
+                {
+                    foreach (string hexRow in hexDataArray)
+                    {
+                        if (hexRow == null) continue;
+                        // Remove any spaces or other non-hex characters
+                        string cleanedHexRow = hexRow.Replace(" ", "");
 
-                // Identify the offset and length of the data to modify
-                int offset = 0; // Replace with the correct offset
-                byte[] newData = Encoding.UTF8.GetBytes("New String"); // Convert your new data
+                        // Convert the cleaned hex string to bytes
+                        byte[] bytes = new byte[cleanedHexRow.Length / 2];
+                        for (int i = 0; i < bytes.Length; i++)
+                        {
+                            bytes[i] = Convert.ToByte(cleanedHexRow.Substring(i * 2, 2), 16);
+                        }
 
-                // Copy the new data into the byte array
-                Array.Copy(newData, 0, originalBytes, offset, newData.Length);
-
-                // Write the modified byte array to a new executable file
-                File.WriteAllBytes(newPath, originalBytes);
-
-                Console.WriteLine("Executable modified and saved as a new version.");
+                        // Write the bytes to the output file
+                        outputFileStream.Write(bytes, 0, bytes.Length);
+                    }
+                }
+                Console.WriteLine("File recreated successfully.");
             }
             catch (Exception ex)
             {
@@ -242,22 +251,15 @@ namespace ProcessExplorer
                 case ProcessComponent.OPITIONAL_PE_HEADER_64: return optionalPeHeader64;
                 case ProcessComponent.OPITIONAL_PE_HEADER_32: return optionalPeHeader32;
                 case ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES: return optionalPeHeaderDataDirectories;
-/*
-                case ProcessComponent.TEXT_SECTION_HEADER: return sectionHeaders[SuperHeader.SectionTypes.TEXT][0];
-                case ProcessComponent.DATA_SECTION_HEADER: return sectionHeaders[SuperHeader.SectionTypes.DATA][0];
-                case ProcessComponent.RSRC_SECTION_HEADER: return sectionHeaders[SuperHeader.SectionTypes.RSRC][0];
-                case ProcessComponent.TEXT_SECTION_BODY: return sectionHeaders[SuperHeader.SectionTypes.TEXT][1];
-                case ProcessComponent.DATA_SECTION_BODY: return sectionHeaders[SuperHeader.SectionTypes.DATA][1];
-                case ProcessComponent.RSRC_SECTION_BODY: return sectionHeaders[SuperHeader.SectionTypes.RSRC][1];*/
-
+                case ProcessComponent.SECTIONS: return sections;
             }
 
-            SuperHeader.SectionTypes comEnum;
-            if(Enum.TryParse(component.ToString().Replace("_SECTION_HEADER", ""), true, out comEnum) && sectionHeaders.ContainsKey(comEnum))
+            if (Enum.TryParse(component.ToString().Replace("_SECTION_HEADER", ""), false, out SuperHeader.SectionTypes comEnum) && sectionHeaders.ContainsKey(comEnum))
             {
                 return sectionHeaders[comEnum][0];
             }
-            else if(Enum.TryParse(component.ToString().Replace("_SECTION_BODY", ""), true, out comEnum) && sectionHeaders.ContainsKey(comEnum))
+
+            if (Enum.TryParse(component.ToString().Replace("_SECTION_BODY", ""), false, out comEnum) && sectionHeaders.ContainsKey(comEnum))
             {
                 return sectionHeaders[comEnum][1];
             }
@@ -268,7 +270,7 @@ namespace ProcessExplorer
         public enum ProcessComponent
         {
             EVERYTHING, DOS_HEADER, DOS_STUB, PE_HEADER, OPITIONAL_PE_HEADER, OPITIONAL_PE_HEADER_64, OPITIONAL_PE_HEADER_32, OPITIONAL_PE_HEADER_DATA_DIRECTORIES,
-            SECTION_TEXT, SECTION_DATA, SECTION_RSRC, NULL_COMPONENT,
+            SECTION_TEXT, SECTION_DATA, SECTION_RSRC, SECTIONS, NULL_COMPONENT,
 
             TEXT_SECTION_HEADER, TEXT_SECTION_BODY,     // Executable code
             DATA_SECTION_HEADER, DATA_SECTION_BODY,     // Initlized data
@@ -311,12 +313,17 @@ namespace ProcessExplorer
             BOLT_SECTION_HEADER, BOLT_SECTION_BODY,     // Used by the Binary Optimization and Layout Tool (BOLT) for performance optimization.
         }
 
+        public enum OffsetType
+        {
+            FILE_OFFSET, RELATIVE_OFFSET
+        }
+
         public enum DataType
         {
             HEX, DECIMAL, BINARY
         }
 
-        public static ProcessComponent getProcessComponent(string name)
+        public static ProcessComponent GetProcessComponent(string name)
         {
             switch(name.ToLower())
             {
@@ -328,6 +335,7 @@ namespace ProcessExplorer
                 case "optional pe header 64": return ProcessComponent.OPITIONAL_PE_HEADER_64;
                 case "optional pe header 32": return ProcessComponent.OPITIONAL_PE_HEADER_32;
                 case "optional pe header data directories": return ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES;
+                case "sections": return ProcessComponent.SECTIONS;
 
                 case ".text section header": return ProcessComponent.TEXT_SECTION_HEADER;
                 case ".text section body": return ProcessComponent.TEXT_SECTION_BODY;

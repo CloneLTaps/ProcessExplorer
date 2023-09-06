@@ -6,6 +6,13 @@ namespace ProcessExplorer.components
     {
         public DosHeader(ProcessHandler processHandler) : base(processHandler, 19, 3, true)
         {
+            string[] firstHexLine = processHandler.everything.hexArray[0, 1].Split(' ');
+            if (firstHexLine[0].ToLower() != "4d" || firstHexLine[1].ToLower() != "5a")
+            {   // This means this file is not a PE
+                FailedToInitlize = true;
+                return;
+            }
+
             string[,] sizeAndDesc = new string[19, 2];
             sizeAndDesc[0, 0] = "2"; sizeAndDesc[0, 1] = "e_magic (2 bytes) \"MZ\" signature indiciating this file is a DOS exe.";
             sizeAndDesc[1, 0] = "2"; sizeAndDesc[1, 1] = "e_cblp (2 bytes) number of bytes on the last page.";

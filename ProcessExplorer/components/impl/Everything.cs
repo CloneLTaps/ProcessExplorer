@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace ProcessExplorer.components.impl
 {
@@ -18,8 +16,7 @@ namespace ProcessExplorer.components.impl
             string lastlineOfHex = hexArray[length - 1, 1];
             string[] hexBytes = lastlineOfHex.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             int byteCount = hexBytes.Length;
-            EndPoint = Convert.ToInt32(deciArray[length - 1, 0] + byteCount);
-            Console.WriteLine("EndPointOffset:" + hexArray[length - 1, 0]);
+            EndPoint = Convert.ToInt32(deciArray[length - 1, 0]) + byteCount;
         }
 
         public override void OpenForm(int row)

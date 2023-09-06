@@ -26,11 +26,17 @@ namespace ProcessExplorer
         private void InitializeComponent()
         {
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle3 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle4 = new System.Windows.Forms.DataGridViewCellStyle();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             this.fileLabel = new System.Windows.Forms.Label();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.treeView = new System.Windows.Forms.TreeView();
             this.dataGridView = new System.Windows.Forms.DataGridView();
+            this.Offset = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Data = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.ASCII = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.hexLabel = new System.Windows.Forms.Label();
             this.toolStrip = new System.Windows.Forms.ToolStrip();
             this.hexButton = new System.Windows.Forms.ToolStripButton();
@@ -44,9 +50,7 @@ namespace ProcessExplorer
             this.doubleByteButton = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator3 = new System.Windows.Forms.ToolStripSeparator();
             this.settingsLabel = new System.Windows.Forms.Label();
-            this.Offset = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.Data = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.ASCII = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.blankTopLabel = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -66,9 +70,9 @@ namespace ProcessExplorer
             this.fileLabel.TabIndex = 0;
             this.fileLabel.Text = "File";
             this.fileLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            this.fileLabel.Click += new System.EventHandler(this.fileLabel_Click);
-            this.fileLabel.MouseLeave += new System.EventHandler(this.fileLabel_MouseLeave);
-            this.fileLabel.MouseHover += new System.EventHandler(this.fileLabel_MouseHover);
+            this.fileLabel.Click += new System.EventHandler(this.FileLabel_Click);
+            this.fileLabel.MouseLeave += new System.EventHandler(this.FileLabel_MouseLeave);
+            this.fileLabel.MouseHover += new System.EventHandler(this.FileLabel_MouseHover);
             // 
             // splitContainer1
             // 
@@ -95,36 +99,81 @@ namespace ProcessExplorer
             this.treeView.Name = "treeView";
             this.treeView.Size = new System.Drawing.Size(253, 517);
             this.treeView.TabIndex = 0;
-            this.treeView.NodeMouseClick += new System.Windows.Forms.TreeNodeMouseClickEventHandler(this.treeView_NodeMouseClick);
+            this.treeView.NodeMouseClick += new System.Windows.Forms.TreeNodeMouseClickEventHandler(this.TreeView_NodeMouseClick);
             // 
             // dataGridView
             // 
+            dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.ControlDark;
+            this.dataGridView.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle1;
             this.dataGridView.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.dataGridView.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
+            dataGridViewCellStyle2.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle2.BackColor = System.Drawing.SystemColors.ControlDark;
+            dataGridViewCellStyle2.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            dataGridViewCellStyle2.ForeColor = System.Drawing.SystemColors.ControlDark;
+            dataGridViewCellStyle2.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle2.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle2.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.dataGridView.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle2;
             this.dataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dataGridView.ColumnHeadersVisible = false;
             this.dataGridView.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.Offset,
             this.Data,
             this.ASCII});
-            dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle1.Font = new System.Drawing.Font("Courier New", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            dataGridViewCellStyle1.ForeColor = System.Drawing.SystemColors.ControlText;
-            dataGridViewCellStyle1.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
-            dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
-            this.dataGridView.DefaultCellStyle = dataGridViewCellStyle1;
+            dataGridViewCellStyle3.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle3.BackColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle3.Font = new System.Drawing.Font("Courier New", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            dataGridViewCellStyle3.ForeColor = System.Drawing.SystemColors.ControlText;
+            dataGridViewCellStyle3.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle3.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle3.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
+            this.dataGridView.DefaultCellStyle = dataGridViewCellStyle3;
             this.dataGridView.Location = new System.Drawing.Point(0, 0);
             this.dataGridView.Name = "dataGridView";
+            dataGridViewCellStyle4.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle4.BackColor = System.Drawing.SystemColors.ControlDark;
+            dataGridViewCellStyle4.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            dataGridViewCellStyle4.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle4.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle4.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle4.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.dataGridView.RowHeadersDefaultCellStyle = dataGridViewCellStyle4;
             this.dataGridView.RowHeadersVisible = false;
             this.dataGridView.RowTemplate.Height = 25;
             this.dataGridView.Size = new System.Drawing.Size(727, 517);
             this.dataGridView.TabIndex = 0;
             this.dataGridView.VirtualMode = true;
-            this.dataGridView.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridView_CellContentClick);
+            this.dataGridView.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.DataGridView_CellContentClick);
+            // 
+            // Offset
+            // 
+            this.Offset.DataPropertyName = "Offset";
+            this.Offset.FillWeight = 1F;
+            this.Offset.HeaderText = "";
+            this.Offset.MaxInputLength = 30;
+            this.Offset.MinimumWidth = 85;
+            this.Offset.Name = "Offset";
+            this.Offset.ReadOnly = true;
+            // 
+            // Data
+            // 
+            this.Data.DataPropertyName = "Data";
+            this.Data.FillWeight = 3F;
+            this.Data.HeaderText = "";
+            this.Data.MinimumWidth = 150;
+            this.Data.Name = "Data";
+            // 
+            // ASCII
+            // 
+            this.ASCII.DataPropertyName = "ASCII";
+            this.ASCII.FillWeight = 1F;
+            this.ASCII.HeaderText = "";
+            this.ASCII.MaxInputLength = 16;
+            this.ASCII.MinimumWidth = 150;
+            this.ASCII.Name = "ASCII";
             // 
             // hexLabel
             // 
@@ -138,6 +187,8 @@ namespace ProcessExplorer
             // 
             // toolStrip
             // 
+            this.toolStrip.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.toolStrip.AutoSize = false;
             this.toolStrip.Dock = System.Windows.Forms.DockStyle.None;
             this.toolStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -153,7 +204,7 @@ namespace ProcessExplorer
             this.toolStripSeparator3});
             this.toolStrip.Location = new System.Drawing.Point(0, 19);
             this.toolStrip.Name = "toolStrip";
-            this.toolStrip.Size = new System.Drawing.Size(1000, 25);
+            this.toolStrip.Size = new System.Drawing.Size(990, 25);
             this.toolStrip.TabIndex = 3;
             this.toolStrip.Text = "toolStrip";
             // 
@@ -269,34 +320,22 @@ namespace ProcessExplorer
             this.settingsLabel.TabIndex = 4;
             this.settingsLabel.Text = "Settings";
             this.settingsLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            this.settingsLabel.Click += new System.EventHandler(this.settingsLabel_Click);
+            this.settingsLabel.Click += new System.EventHandler(this.SettingsLabel_Click);
+            this.settingsLabel.MouseLeave += new System.EventHandler(this.SettingsLabel_MouseLeave);
+            this.settingsLabel.MouseHover += new System.EventHandler(this.SettingsLabel_MouseHover);
             // 
-            // Offset
+            // blankTopLabel
             // 
-            this.Offset.DataPropertyName = "Offset";
-            this.Offset.FillWeight = 1F;
-            this.Offset.HeaderText = "";
-            this.Offset.MaxInputLength = 30;
-            this.Offset.MinimumWidth = 85;
-            this.Offset.Name = "Offset";
-            this.Offset.ReadOnly = true;
-            // 
-            // Data
-            // 
-            this.Data.DataPropertyName = "Data";
-            this.Data.FillWeight = 3F;
-            this.Data.HeaderText = "";
-            this.Data.MinimumWidth = 150;
-            this.Data.Name = "Data";
-            // 
-            // ASCII
-            // 
-            this.ASCII.DataPropertyName = "ASCII";
-            this.ASCII.FillWeight = 1F;
-            this.ASCII.HeaderText = "";
-            this.ASCII.MaxInputLength = 16;
-            this.ASCII.MinimumWidth = 150;
-            this.ASCII.Name = "ASCII";
+            this.blankTopLabel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.blankTopLabel.BackColor = System.Drawing.Color.White;
+            this.blankTopLabel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.blankTopLabel.Location = new System.Drawing.Point(87, 0);
+            this.blankTopLabel.Margin = new System.Windows.Forms.Padding(3);
+            this.blankTopLabel.Name = "blankTopLabel";
+            this.blankTopLabel.Size = new System.Drawing.Size(900, 19);
+            this.blankTopLabel.TabIndex = 5;
+            this.blankTopLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // Form1
             // 
@@ -304,6 +343,7 @@ namespace ProcessExplorer
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.LightGray;
             this.ClientSize = new System.Drawing.Size(984, 561);
+            this.Controls.Add(this.blankTopLabel);
             this.Controls.Add(this.settingsLabel);
             this.Controls.Add(this.toolStrip);
             this.Controls.Add(this.hexLabel);
@@ -345,6 +385,7 @@ namespace ProcessExplorer
         private DataGridViewTextBoxColumn Offset;
         private DataGridViewTextBoxColumn Data;
         private DataGridViewTextBoxColumn ASCII;
+        private Label blankTopLabel;
     }
 }
 

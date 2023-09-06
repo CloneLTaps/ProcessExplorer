@@ -8,7 +8,14 @@ namespace ProcessExplorer.components
     {
         public DosStub(ProcessHandler processHandler) : base(processHandler, 1, 3, false)
         {
-            Console.WriteLine("Starting DosStub headerRowSize:" + processHandler.dosHeader.RowSize + " StartPoint:" + StartPoint);
+            if(processHandler.everything.EndPoint <= processHandler.dosHeader.EndPoint)
+            {   // This means our PE only consits of a PE Header 
+                FailedToInitlize = true;
+                return;
+            }
+
+            Console.WriteLine("EVERYTHING END POINT:" + processHandler.everything.EndPoint + " DosHeaderEndPoint:" + processHandler.dosHeader.EndPoint);
+
             StartPoint = processHandler.dosHeader.EndPoint;
             string littleEndianHex = processHandler.dosHeader.hexArray[processHandler.dosHeader.RowSize - 1, 1];
             string[] hexBytes = littleEndianHex.Split(' ');
@@ -17,7 +24,6 @@ namespace ProcessExplorer.components
 
             EndPoint = Convert.ToInt32(hexEndPoint.Replace("0x", ""), 16); 
             PopulateNonDescArrays();
-            Console.WriteLine("DosStub EndPoint:" + hexEndPoint + " StartPoint:" + StartPoint + " EndPoint:" + EndPoint);
         }
 
         public override void OpenForm(int row)

@@ -10,6 +10,12 @@ namespace ProcessExplorer.components
     {
         public PeHeader(ProcessHandler processHandler, int startingPoint) : base(processHandler, 8, 3, true)
         {
+            if(processHandler.everything.EndPoint <= processHandler.dosStub.EndPoint + 24)
+            {   // This means this file will not contain the nessary PE Header fields thus making this invalid
+                FailedToInitlize = true;
+                return;
+            }
+
             string[,] sizeAndDesc = new string[8, 2];
             sizeAndDesc[0, 0] = "4"; sizeAndDesc[0, 1] = "Signature (4 bytes) \"PE\0\0\" denotes start of the PE.";
             sizeAndDesc[1, 0] = "2"; sizeAndDesc[1, 1] = "Machine (2 bytes) taget machines architecture <click for more details>.";
@@ -24,7 +30,15 @@ namespace ProcessExplorer.components
             Console.WriteLine("PeHeader StartPoint:" + startingPoint);
             populateArrays(sizeAndDesc);
 
-            int bit = int.Parse(SuperHeader.OptionsForm.GetBigEndianValue(hexArray[1, 1]), NumberStyles.HexNumber);
+            string[] signatureHex = hexArray[0, 1].Split(" ");
+            if(signatureHex[0] != "50" || signatureHex[1] != "45" && signatureHex[2] != "00" || signatureHex[3] != "00")
+            {   // This means this is not a valid PE since the header signature was incorrect
+                FailedToInitlize = true;
+                Console.WriteLine("FAILED");    
+                return;
+            }
+
+            int bit = int.Parse(OptionsForm.GetBigEndianValue(hexArray[1, 1]), NumberStyles.HexNumber);
             processHandler.is64Bit = bit == 0x8664;
 
             // None of our headers have more than 1 characteristic type structure 
