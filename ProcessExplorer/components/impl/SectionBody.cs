@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
+﻿
 namespace ProcessExplorer.components.impl
 {
     class SectionBody : SuperHeader, ISection
@@ -13,7 +10,6 @@ namespace ProcessExplorer.components.impl
             this.sectionType = sectionType;
             StartPoint = startingPoint;
             EndPoint = endPoint;
-            Console.WriteLine("Body SectionType:" + sectionType.ToString() + " StartingPoint:" + startingPoint + " EndingPoint:" + endPoint);
             PopulateNonDescArrays();
         }
 

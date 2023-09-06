@@ -1,5 +1,4 @@
-﻿using System;
-
+﻿
 namespace ProcessExplorer.components
 {
     class DosHeader : SuperHeader
@@ -36,7 +35,6 @@ namespace ProcessExplorer.components
 
             StartPoint = 0; // Must set the start point before populating the arrays
             populateArrays(sizeAndDesc);
-            Console.WriteLine("DosHeaderStart:" + hexArray[RowSize - 1, 0] + " StartPoint:" + StartPoint + " EndPoint:" + EndPoint);
         }
 
         public override void OpenForm(int row)

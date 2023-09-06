@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Linq;
-using System.Globalization;
 
 namespace ProcessExplorer.components
 {
@@ -8,13 +6,11 @@ namespace ProcessExplorer.components
     {
         public DosStub(ProcessHandler processHandler) : base(processHandler, 1, 3, false)
         {
-            if(processHandler.everything.EndPoint <= processHandler.dosHeader.EndPoint)
+            if (processHandler.everything.EndPoint <= processHandler.dosHeader.EndPoint)
             {   // This means our PE only consits of a PE Header 
                 FailedToInitlize = true;
                 return;
             }
-
-            Console.WriteLine("EVERYTHING END POINT:" + processHandler.everything.EndPoint + " DosHeaderEndPoint:" + processHandler.dosHeader.EndPoint);
 
             StartPoint = processHandler.dosHeader.EndPoint;
             string littleEndianHex = processHandler.dosHeader.hexArray[processHandler.dosHeader.RowSize - 1, 1];

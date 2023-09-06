@@ -137,8 +137,6 @@ namespace ProcessExplorer.components
         protected void populateArrays(string[,] sizeAndDesc)
         {
             string[] hexValues = new string[0];
-            Console.WriteLine(" ");
-            Console.WriteLine("PopulateArrays 1 Length:" + hexArray.GetLength(0) + " StartPoint:" + StartPoint);
 
             /** The following loop will be used to increase the size of the hexValues array. It will determine how many bytes 
              * this header file will need it will then add a new row of 16 after each 
@@ -146,29 +144,22 @@ namespace ProcessExplorer.components
             int startingIndex = StartPoint <= 0 ? 0 : (int)Math.Floor(StartPoint / 16.0); // 2
             int totalByteSize = StartPoint;
             int hexValuesSize = startingIndex * 16;
-            Console.WriteLine("Starting StartinIndex:" + startingIndex + " TotalByteSize:" + totalByteSize + " HexValuesSize:" + hexValues.Length 
-                + " SizeAndDescLength:" + sizeAndDesc.GetLength(0));
 
             for (int i = 0; i < sizeAndDesc.GetLength(0); i++)
             {
-                totalByteSize += Convert.ToInt32(sizeAndDesc[i, 0]); //int.Parse(sizeAndDesc[i].Replace("0x", ""), NumberStyles.HexNumber); // 36
-                //Console.WriteLine("first i:" + i + " HexSize:" + hexValuesSize + " totalByteSize:" +  totalByteSize + " NewSize:" + sizeAndDesc[i, 0]);
+                totalByteSize += Convert.ToInt32(sizeAndDesc[i, 0]); 
+
                 if (totalByteSize > hexValuesSize)
                 {
                     int index = hexValuesSize <= 0 ? 0 : ((int) Math.Floor(hexValuesSize / 16.0)); // Prevents a divide by 0 issue
-                    Console.WriteLine("Index:" + index + " HexArraySize:" + processHandler.everything.hexArray.GetLength(0) + " HexValuesSize:" + hexValuesSize);
                     if (index >= processHandler.everything.hexArray.GetLength(0)) break; // This means we have gone over the size of the array
                     
                     string[] newArray = processHandler.everything.hexArray[index, 1].Split(' '); // Adds the next row
                     Array.Resize(ref hexValues, hexValues.Length + newArray.Length);
                     Array.Copy(newArray, 0, hexValues, hexValues.Length - newArray.Length, newArray.Length);
                     hexValuesSize += 16; // This adds an extra row aka 16 elements (we call this after getting index to avoid needing to subtract 1)
-                    Console.WriteLine("first low part i:" + i + " index:" + index + " HexSize:" + hexValuesSize + " TotalByteSize:" + totalByteSize + " NewArrayLength:" + newArray.Length +
-                        " Array:" + string.Join(", ", newArray));
                 }
             }
-            Console.WriteLine("Final StartinIndex:" + startingIndex + " TotalByteSize:" + totalByteSize + " HexValuesSize:" + hexValues.Length + " ArrayLegnth:"
-                + hexValues.Length + "   " + string.Join(", ", hexValues) + " \n");
 
             int skipAmount = StartPoint % 16; // The amount we need to skip before we reach our target byte
             int previousBytesize = 0;
@@ -190,20 +181,15 @@ namespace ProcessExplorer.components
                 deciArray[i, 1] = string.Join(" ", Array.ConvertAll(splitNewHexValues, hex => long.Parse(hex, NumberStyles.HexNumber)));
                 binaryArray[i, 0] = Convert.ToString(deciOffset, 2); // 2 specifies to use binary
                 binaryArray[i, 1] = string.Join(" ", splitNewHexValues.Select(hex => Convert.ToString(long.Parse(hex, NumberStyles.HexNumber), 2)));
-
-                Console.WriteLine("second i:" + i + " Offset:" + hexArray[i, 0] + " Data:" + hexArray[i, 1] + " NewOffset:" + newOffset + " NewByteSize:"
-                    + newByteSize + " PreviousOffset:" + previousOffset + " StartPoint:" + StartPoint);
                 previousBytesize = newByteSize;
             }
-            Console.WriteLine("PopulateArrays 3 sizeAndDesc:" + sizeAndDesc.GetLength(0) + " RowSize:" + RowSize  + " HexArrayLength:" + hexArray.GetLength(0));
             // This will set the ending point
             int lastOffset = int.Parse((hexArray[RowSize - 1, 0]).Replace("0x", ""), NumberStyles.HexNumber) - StartPoint;
             int lastByteSize = Convert.ToInt32(sizeAndDesc[RowSize - 1, 0]);
             EndPoint = lastOffset + lastByteSize + StartPoint;
-            Console.WriteLine("EndPoint:" + EndPoint + " LastOffset:" + lastOffset + " LastByteSize:" + lastByteSize);
         }
 
-        public string getHex(int row, int column, bool doubleByte)
+        public string GetHex(int row, int column, bool doubleByte)
         {
             if (row > hexArray.GetLength(0) - 1 || column > hexArray.GetLength(1)) return "";
             if (!doubleByte || column == 0 || column == 2)
@@ -213,10 +199,10 @@ namespace ProcessExplorer.components
             }
             // This will reverse the hex and switch it from little-endian to big-endian
             string[] values = hexArray[row, column].Split(' ');
-            return getBigEndian(values);
+            return GetBigEndian(values);
         }
 
-        public string getBinary(int row, int column, bool doubleByte)
+        public string GetBinary(int row, int column, bool doubleByte)
         {
             if (row > binaryArray.GetLength(0) - 1 || column > hexArray.GetLength(1)) return "";
             if(column > 1) return hexArray[row, column]; // This is here because this array does not contain the desc
@@ -228,11 +214,11 @@ namespace ProcessExplorer.components
             }
             // This will reverse the binary and switch it from little-endian to big-endian
             string[] values = hexArray[row, column].Split(' ');
-            string bigEndianHex = getBigEndian(values);
+            string bigEndianHex = GetBigEndian(values);
             return string.Join(" ", bigEndianHex.Split(' ').Select(hexPair => Convert.ToString(Convert.ToInt64(hexPair, 16), 2)));
         }
 
-        public string getDecimal(int row, int column, bool doubleByte)
+        public string GetDecimal(int row, int column, bool doubleByte)
         {
             if (row > deciArray.GetLength(0) - 1 || column > hexArray.GetLength(1)) return "";
             if (column > 1) return hexArray[row, column]; // This is here because this array does not contain the desc
@@ -244,7 +230,7 @@ namespace ProcessExplorer.components
             }
             // This will reverse the decimal and switch it from little-endian to big-endian (only for the data)
             string[] values = hexArray[row, column].Split(' ');
-            string bigEndianHex = getBigEndian(values);
+            string bigEndianHex = GetBigEndian(values);
             return string.Join(" ", bigEndianHex.Split(' ').Select(hexPair => ulong.Parse(hexPair, NumberStyles.HexNumber)));
         }
 
@@ -255,7 +241,7 @@ namespace ProcessExplorer.components
             return offset - initialOffset;
         }
 
-        private string getBigEndian(string[] hexPairs)
+        private string GetBigEndian(string[] hexPairs)
         {
             if (ShrinkDataSection)
             {

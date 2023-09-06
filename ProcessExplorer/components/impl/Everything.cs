@@ -6,10 +6,8 @@ namespace ProcessExplorer.components.impl
     {
         public Everything(ProcessHandler processHandler, string[,] hex, string[,] deci, string[,] binary) : base(processHandler, 8, 3, false) // We override 8 (end point) in the constructor 
         {
-            Console.WriteLine("Starting Everything");
             StartPoint = 0;
             SetAllArrays(hex, deci, binary);
-            Console.WriteLine("FInished setting all arrays");
 
             // This will set this files end point
             int length = hexArray.GetLength(0);

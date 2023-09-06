@@ -42,7 +42,7 @@ namespace ProcessExplorer
         }
         private void Form1_Load(object sender, EventArgs e)
         {
-            Console.WriteLine("Starting HexEditor");
+            Console.WriteLine("Starting Process Explorer");
             splitContainer1.MaximumSize = new Size(ClientSize.Width, Height - 80);
 
             foreach (ToolStripItem t in toolStrip.Items)
@@ -53,15 +53,6 @@ namespace ProcessExplorer
             hexButton.Checked = singleByteButton.Checked = fileOffsetButton.Checked = true;
             Resize += Form1_Resize;
             toolStrip.Renderer = new MyToolStripRenderer();
-        }
-
-        private class MyToolStripRenderer : ToolStripProfessionalRenderer
-        {
-            protected override void OnRenderToolStripBackground(ToolStripRenderEventArgs e)
-            {
-                // Set the background color here
-                e.Graphics.FillRectangle(new SolidBrush(Color.LightGray), e.AffectedBounds);
-            }
         }
 
         private void Form1_Resize(object sender, EventArgs e)
@@ -108,7 +99,6 @@ namespace ProcessExplorer
         {
             ToolStripMenuItem settingItem = sender as ToolStripMenuItem;
             settingItem.Checked = !settingItem.Checked; // Toggle checked state
-            Console.WriteLine("Text: " + settingItem.Text);
             
             switch(settingItem.Text)
             {
@@ -156,14 +146,14 @@ namespace ProcessExplorer
             else if(text == "Save")
             {
                 fileContextMenu.Close();
-                // Create an instance of SaveFileDialog
-                SaveFileDialog saveFileDialog = new SaveFileDialog();
 
-                // Set properties of the dialog
-                saveFileDialog.Filter = "All Files (*.*)|*.*";
-                saveFileDialog.Title = "Save File As";
-                saveFileDialog.FileName = "MyFile.exe"; // Default file name
-                saveFileDialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                SaveFileDialog saveFileDialog = new SaveFileDialog
+                {
+                    Filter = "All Files (*.*)|*.*",
+                    Title = "Save File As",
+                    FileName = processHandler.FileName,
+                    InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
+                };
 
                 // Show the SaveFileDialog and check if the user clicked "Save"
                 if (saveFileDialog.ShowDialog() == DialogResult.OK)
@@ -363,6 +353,7 @@ namespace ProcessExplorer
             {
                 TreeNode clickedNode = e.Node;
                 string nodeText = clickedNode.Text;
+                if (nodeText == "Sections") return;
                 if (nodeText.Contains(processHandler.FileName)) nodeText = "everything";
 
                 int previousRowCount = processHandler.GetComponentsRowIndexCount(selectedComponent);
@@ -430,6 +421,15 @@ namespace ProcessExplorer
         private void SettingsLabel_MouseHover(object sender, EventArgs e)
         {
             settingsLabel.BackColor = SystemColors.GradientInactiveCaption;
+        }
+
+        private class MyToolStripRenderer : ToolStripProfessionalRenderer
+        {
+            protected override void OnRenderToolStripBackground(ToolStripRenderEventArgs e)
+            {
+                // Set the background color here
+                e.Graphics.FillRectangle(new SolidBrush(Color.LightGray), e.AffectedBounds);
+            }
         }
     }
 }

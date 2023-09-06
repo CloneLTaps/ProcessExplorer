@@ -17,13 +17,13 @@ namespace ProcessExplorer
 
         public bool ReterunToTop { get; set; }
 
+        public bool Is64Bit { get; set; }
         public OffsetType Offset { get; set; }
 
-        public readonly SuperHeader everything, dosHeader, dosStub, peHeader, optionalPeHeader, optionalPeHeader64, optionalPeHeader32, optionalPeHeaderDataDirectories, sections;
+        // These following fields are all only initlized inside the constructor and thus marked 'readonly' 
+        public readonly SuperHeader everything, dosHeader, dosStub, peHeader, optionalPeHeader, optionalPeHeader64, optionalPeHeader32, optionalPeHeaderDataDirectories;
         public readonly Dictionary<SuperHeader.SectionTypes, List<SuperHeader>> sectionHeaders = new Dictionary<SuperHeader.SectionTypes, List<SuperHeader>>();
         private readonly FileStream file;
-
-        public bool is64Bit;
 
         public ProcessHandler(FileStream file)
         {
@@ -72,17 +72,12 @@ namespace ProcessExplorer
                 endPoint = peHeader.EndPoint;
             }
 
-            sections = new Sections(this, endPoint);
-
-            while(endPoint >= 0) // This will add all of the section headers
-            {
-                endPoint = AssignSectionHeaders(filesHex, endPoint);
-            }
-
+            // Recursively adds sections
+            AssignSectionHeaders(filesHex, endPoint);
         }
 
         /* This will return the new end point and it will return -1 if we reached the last section */
-        private int AssignSectionHeaders(string[,] filesHex, int startPoint)
+        private void AssignSectionHeaders(string[,] filesHex, int startPoint)
         {
             int initialSkipAmount = startPoint % 16; // The amount we need to skip before we reach our target byte 
             int startingIndex = startPoint <= 0 ? 0 : (int)Math.Floor(startPoint / 16.0);
@@ -99,7 +94,7 @@ namespace ProcessExplorer
                         char asciiChar = b >= 32 && b <= 126 ? (char)b : '.';
                         ascii += asciiChar;
 
-                        if (totalCount++ > 8) return -1; // If we dont find it then we must of found all of the section headers
+                        if (totalCount++ > 8); // If we dont find it then we must of found all of the section headers
 
                         if (SuperHeader.GetSectionType(ascii) != SuperHeader.SectionTypes.NULL_SECTION_TYPE)
                         {
@@ -110,13 +105,14 @@ namespace ProcessExplorer
                             headerList.Add(new SectionBody(this, header.bodyStartPoint, header.bodyEndPoint, sectionType));
 
                             sectionHeaders.Add(sectionType, headerList);
-                            return header.EndPoint;
+                            AssignSectionHeaders(filesHex, header.EndPoint);
+                            return;
                         }
                     }
                 }
                 initialSkipAmount = 0;
             }
-            return -1;
+            return;
         }
 
         public int GetComponentsRowIndexCount(ProcessComponent component)
@@ -142,13 +138,13 @@ namespace ProcessExplorer
 
             switch(type)
             {
-                case DataType.HEX: return header.getHex(row, column, doubleByte);
+                case DataType.HEX: return header.GetHex(row, column, doubleByte);
                 case DataType.DECIMAL: 
-                    if(column == 2) return header.getHex(row, 2, doubleByte);
-                    return header.getDecimal(row, column, doubleByte);
+                    if(column == 2) return header.GetHex(row, 2, doubleByte);
+                    return header.GetDecimal(row, column, doubleByte);
                 case DataType.BINARY:
-                    if (column == 2) return header.getHex(row, 2, doubleByte);
-                    return header.getBinary(row, column, doubleByte);
+                    if (column == 2) return header.GetHex(row, 2, doubleByte);
+                    return header.GetBinary(row, column, doubleByte);
             }
             return "";
         }
@@ -210,13 +206,17 @@ namespace ProcessExplorer
             int length = everything.hexArray.GetLength(0);
             string[] hexDataArray = new string[length];
 
+            for (int row = 0; row < length; row++)
+            {
+                hexDataArray[row] = everything.hexArray[row, 1];
+            }
+
             try
             {
                 using (FileStream outputFileStream = new FileStream(outputPath, FileMode.Create))
                 {
                     foreach (string hexRow in hexDataArray)
                     {
-                        if (hexRow == null) continue;
                         // Remove any spaces or other non-hex characters
                         string cleanedHexRow = hexRow.Replace(" ", "");
 
@@ -231,7 +231,6 @@ namespace ProcessExplorer
                         outputFileStream.Write(bytes, 0, bytes.Length);
                     }
                 }
-                Console.WriteLine("File recreated successfully.");
             }
             catch (Exception ex)
             {
@@ -251,18 +250,14 @@ namespace ProcessExplorer
                 case ProcessComponent.OPITIONAL_PE_HEADER_64: return optionalPeHeader64;
                 case ProcessComponent.OPITIONAL_PE_HEADER_32: return optionalPeHeader32;
                 case ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES: return optionalPeHeaderDataDirectories;
-                case ProcessComponent.SECTIONS: return sections;
             }
 
             if (Enum.TryParse(component.ToString().Replace("_SECTION_HEADER", ""), false, out SuperHeader.SectionTypes comEnum) && sectionHeaders.ContainsKey(comEnum))
-            {
                 return sectionHeaders[comEnum][0];
-            }
 
             if (Enum.TryParse(component.ToString().Replace("_SECTION_BODY", ""), false, out comEnum) && sectionHeaders.ContainsKey(comEnum))
-            {
                 return sectionHeaders[comEnum][1];
-            }
+
             return null;
         }
 
@@ -270,7 +265,7 @@ namespace ProcessExplorer
         public enum ProcessComponent
         {
             EVERYTHING, DOS_HEADER, DOS_STUB, PE_HEADER, OPITIONAL_PE_HEADER, OPITIONAL_PE_HEADER_64, OPITIONAL_PE_HEADER_32, OPITIONAL_PE_HEADER_DATA_DIRECTORIES,
-            SECTION_TEXT, SECTION_DATA, SECTION_RSRC, SECTIONS, NULL_COMPONENT,
+            SECTION_TEXT, SECTION_DATA, SECTION_RSRC, NULL_COMPONENT,
 
             TEXT_SECTION_HEADER, TEXT_SECTION_BODY,     // Executable code
             DATA_SECTION_HEADER, DATA_SECTION_BODY,     // Initlized data
@@ -335,7 +330,6 @@ namespace ProcessExplorer
                 case "optional pe header 64": return ProcessComponent.OPITIONAL_PE_HEADER_64;
                 case "optional pe header 32": return ProcessComponent.OPITIONAL_PE_HEADER_32;
                 case "optional pe header data directories": return ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES;
-                case "sections": return ProcessComponent.SECTIONS;
 
                 case ".text section header": return ProcessComponent.TEXT_SECTION_HEADER;
                 case ".text section body": return ProcessComponent.TEXT_SECTION_BODY;

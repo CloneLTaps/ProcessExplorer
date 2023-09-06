@@ -27,7 +27,6 @@ namespace ProcessExplorer.components
             sizeAndDesc[7, 0] = "2"; sizeAndDesc[7, 1] = "Characteristics (2 bytes) target architecture <click for more details>.";
 
             StartPoint = startingPoint; // Must set the start point before populating the arrays
-            Console.WriteLine("PeHeader StartPoint:" + startingPoint);
             populateArrays(sizeAndDesc);
 
             string[] signatureHex = hexArray[0, 1].Split(" ");
@@ -39,7 +38,7 @@ namespace ProcessExplorer.components
             }
 
             int bit = int.Parse(OptionsForm.GetBigEndianValue(hexArray[1, 1]), NumberStyles.HexNumber);
-            processHandler.is64Bit = bit == 0x8664;
+            processHandler.Is64Bit = bit == 0x8664;
 
             // None of our headers have more than 1 characteristic type structure 
             characteristics = new Dictionary<int, string> {
@@ -49,7 +48,7 @@ namespace ProcessExplorer.components
                 { 0x0008, "IMAGE_FILE_LOCAL_SYMS_STRIPPED" },
                 { 0x0010, "IMAGE_FILE_AGGRESIVE_WS_TRIM" },
                 { 0x0020, "IMAGE_FILE_LARGE_ADDRESS_AWARE" },
-                { 0x0040, processHandler.is64Bit ? "IMAGE_FILE_RELOCS_STRIPPED" : "IMAGE_FILE_BYTES_REVERSED_HI"},
+                { 0x0040, processHandler.Is64Bit ? "IMAGE_FILE_RELOCS_STRIPPED" : "IMAGE_FILE_BYTES_REVERSED_HI"},
                 { 0x0080, "IMAGE_FILE_BYTES_REVERSED_LO" },
                 { 0x0100, "IMAGE_FILE_32BIT_MACHINE" },
                 { 0x0200, "IMAGE_FILE_DEBUG_STRIPPED" },
@@ -60,8 +59,6 @@ namespace ProcessExplorer.components
                 { 0x4000, "IMAGE_FILE_UP_SYSTEM_ONLY" },
                 { 0x8000, "IMAGE_FILE_BYTES_REVERSED_HI" }
             };
-
-            Console.WriteLine("PE Header" + " StartPoint:" + StartPoint + " EndPoint:" + EndPoint);
         }
 
         public override void OpenForm(int row)

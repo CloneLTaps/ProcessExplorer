@@ -1,5 +1,4 @@
-﻿using System;
-using System.Globalization;
+﻿using System.Globalization;
 
 namespace ProcessExplorer.components.impl
 {
@@ -21,18 +20,14 @@ namespace ProcessExplorer.components.impl
             sizeAndDesc[7, 0] = "4"; sizeAndDesc[7, 1] = "BaseOfCode (4 bytes) points to starting RVA of the .text section.";
 
             StartPoint = startingPoint; // Must set the start point before populating the arrays
-            Console.WriteLine("Optional PeHeader StartPoint:" + startingPoint);
             populateArrays(sizeAndDesc);
 
             // if the magic bit does not equal 0x10B or 0x20B then this is not a valid optional header
             // if the magic bit is equal to 0x10B then we have a 32 bit header while 0x20B is for 64 bit
-            
             string hex = OptionsForm.GetBigEndianValue(hexArray[0, 1]);
             int magicBit = int.Parse(hex, NumberStyles.HexNumber);
             if (magicBit == 0x10B || magicBit == 0x20B) validHeader = true;
             peThirtyTwoPlus = (magicBit == 0x20B);
-
-            Console.WriteLine("Optional PeHeader EndPoint:" + EndPoint + " \n");
         }
 
         public override void OpenForm(int row)

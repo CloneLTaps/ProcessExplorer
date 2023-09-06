@@ -33,7 +33,6 @@ namespace ProcessExplorer.components.impl
             sizeAndDesc[20, 0] = "4"; sizeAndDesc[20, 1] = "NumberOfRvaAndSizes (4 bytes) specifies how many entires our data directory contains.";
 
             StartPoint = startingPoint; // Must set the start point before populating the arrays
-            Console.WriteLine("Optional PeHeader 64 StartPoint:" + startingPoint);
             populateArrays(sizeAndDesc);
 
             characteristics = new Dictionary<int, string> {

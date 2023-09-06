@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Globalization;
 
 namespace ProcessExplorer.components.impl
 {
@@ -25,14 +24,10 @@ namespace ProcessExplorer.components.impl
             StartPoint = startingPoint;
             this.sectionType = sectionType;
 
-            Console.WriteLine("Starting Section " + sectionType.ToString());
             populateArrays(sizeAndDesc);
-            Console.WriteLine("Completed Section " + sectionType.ToString());
 
             bodyStartPoint = Convert.ToInt32(OptionsForm.GetBigEndianValue(hexArray[4, 1]), 16);
             bodyEndPoint = Convert.ToInt32(OptionsForm.GetBigEndianValue(hexArray[3, 1]), 16) + bodyStartPoint;
-
-            Console.WriteLine("Type:" + sectionType.ToString() + " EndHex:" + hexArray[3, 1] + " End:" + bodyEndPoint + " StartHex:" + hexArray[4, 1] + " Start:" + bodyStartPoint);
         }
 
         public SectionTypes GetSectionType()
