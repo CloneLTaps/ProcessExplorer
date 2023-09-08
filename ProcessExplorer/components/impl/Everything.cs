@@ -4,7 +4,8 @@ namespace ProcessExplorer.components.impl
 {
     class Everything : SuperHeader
     {
-        public Everything(ProcessHandler processHandler, string[,] hex, string[,] deci, string[,] binary) : base(processHandler, 8, 3, false) // We override 8 (end point) in the constructor 
+        public Everything(ProcessHandler processHandler, string[,] hex, string[,] deci, string[,] binary) 
+            : base(processHandler, ProcessHandler.ProcessComponent.EVERYTHING, 8, 3, false) // We override 8 (end point) in the constructor 
         {
             StartPoint = 0;
             SetAllArrays(hex, deci, binary);

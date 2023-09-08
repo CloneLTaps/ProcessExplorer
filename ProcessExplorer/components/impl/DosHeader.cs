@@ -1,17 +1,18 @@
-﻿
+﻿using System;
 namespace ProcessExplorer.components
 {
     class DosHeader : SuperHeader
     {
-        public DosHeader(ProcessHandler processHandler) : base(processHandler, 19, 3, true)
+        public DosHeader(ProcessHandler processHandler) : base(processHandler, ProcessHandler.ProcessComponent.DOS_HEADER, 19, 3, true)
         {
-            string[] firstHexLine = processHandler.everything.hexArray[0, 1].Split(' ');
+            string[] firstHexLine = processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.EVERYTHING).hexArray[0, 1].Split(' ');
+            Console.WriteLine("Starting DosHeader");
             if (firstHexLine[0].ToLower() != "4d" || firstHexLine[1].ToLower() != "5a")
             {   // This means this file is not a PE
                 FailedToInitlize = true;
                 return;
             }
-
+            Console.WriteLine("Starting DosHeader p2");
             string[,] sizeAndDesc = new string[19, 2];
             sizeAndDesc[0, 0] = "2"; sizeAndDesc[0, 1] = "e_magic (2 bytes) \"MZ\" signature indiciating this file is a DOS exe.";
             sizeAndDesc[1, 0] = "2"; sizeAndDesc[1, 1] = "e_cblp (2 bytes) number of bytes on the last page.";
@@ -35,6 +36,7 @@ namespace ProcessExplorer.components
 
             StartPoint = 0; // Must set the start point before populating the arrays
             populateArrays(sizeAndDesc);
+            Console.WriteLine("Starting DosHeader p3");
         }
 
         public override void OpenForm(int row)

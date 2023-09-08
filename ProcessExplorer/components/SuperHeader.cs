@@ -27,13 +27,16 @@ namespace ProcessExplorer.components
 
         public bool FailedToInitlize { get; protected set; }
 
+        public ProcessHandler.ProcessComponent Component { get; protected set; }
+
         public Dictionary<int, string> characteristics { get; protected set; }
 
-        public SuperHeader(ProcessHandler processHandler, int rowSize, int columnSize, bool shrinkDataSection)
+        public SuperHeader(ProcessHandler processHandler, ProcessHandler.ProcessComponent component, int rowSize, int columnSize, bool shrinkDataSection)
         {
             this.ShrinkDataSection = shrinkDataSection;
             this.processHandler = processHandler;
             this.ColumnSize = columnSize;
+            this.Component = component;
             this.RowSize = rowSize;
 
             hexArray = new string[rowSize, columnSize];
@@ -58,7 +61,7 @@ namespace ProcessExplorer.components
             int hexValuesSize = startingIndex * 16;
 
             // I need to first redefine the size of the arrays
-            string[,] filesHex = processHandler.everything.hexArray;
+            string[,] filesHex = processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.EVERYTHING).hexArray;
             int rowSize = GetRowCount(filesHex, startingIndex);
             hexArray = new string[rowSize, ColumnSize];
             binaryArray = new string[rowSize, ColumnSize - 1]; // I subtract 1 here because theres no point saving the descriptions more than once
@@ -97,7 +100,7 @@ namespace ProcessExplorer.components
                     if (value < StartPoint) continue;
                     if (rowOffset == -1) rowOffset = j; // Sets how many bytes into the row it took to reach our first value
                   
-                    correctedHexData += dataRow[j] + " ";
+                    if(dataRow.Length - 1 >= j) correctedHexData += dataRow[j] + " ";
                 }
 
                 offsetSum = long.Parse(filesHex[i, 0].Replace("0x", ""), NumberStyles.HexNumber) + (rowOffset < 0 ? 0 : rowOffset);
@@ -152,9 +155,9 @@ namespace ProcessExplorer.components
                 if (totalByteSize > hexValuesSize)
                 {
                     int index = hexValuesSize <= 0 ? 0 : ((int) Math.Floor(hexValuesSize / 16.0)); // Prevents a divide by 0 issue
-                    if (index >= processHandler.everything.hexArray.GetLength(0)) break; // This means we have gone over the size of the array
+                    if (index >= processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.EVERYTHING).hexArray.GetLength(0)) break; // This means we have gone over the size of the array
                     
-                    string[] newArray = processHandler.everything.hexArray[index, 1].Split(' '); // Adds the next row
+                    string[] newArray = processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.EVERYTHING).hexArray[index, 1].Split(' '); // Adds the next row
                     Array.Resize(ref hexValues, hexValues.Length + newArray.Length);
                     Array.Copy(newArray, 0, hexValues, hexValues.Length - newArray.Length, newArray.Length);
                     hexValuesSize += 16; // This adds an extra row aka 16 elements (we call this after getting index to avoid needing to subtract 1)
@@ -292,62 +295,10 @@ namespace ProcessExplorer.components
             return presentCharacteristics.ToArray();
         }
 
-        public enum SectionTypes
+        public static string GetSectionString(ProcessHandler.ProcessComponent type)
         {
-            TEXT, DATA, RSRC, RDATA, PDATA, IDATA, EDATA, XDATA, SXDATA, RELOC, TLS, DEBUG, ARCH, BSS, CORMETA, CRT, 
-            BIND, CET, SDATA, GLUE_7T, SBSS, SBDATA, SBSS_M, SBDATA_M, RODATA1, VSDATA, TBSS, TDATA, VFDATA, GLUE_7,
-            VITAL, ROBASE, RANDOM, BOLT,
-            NULL_SECTION_TYPE
-        }
-
-        public static SectionTypes GetSectionType(string name)
-        {
-            return name.ToLower() switch
-            {
-                ".text" => SectionTypes.TEXT,
-                ".rsrc" => SectionTypes.RSRC,
-                ".data" => SectionTypes.DATA,
-                ".rdata" => SectionTypes.RDATA,
-                ".pdata" => SectionTypes.PDATA,
-                ".idata" => SectionTypes.IDATA,
-                ".edata" => SectionTypes.EDATA,
-                ".xdata" => SectionTypes.XDATA,
-                ".sxdata" => SectionTypes.SXDATA,
-                ".reloc" => SectionTypes.RELOC,
-                ".tls" => SectionTypes.TLS,
-                ".debug" => SectionTypes.DEBUG,
-                ".arch" => SectionTypes.ARCH,
-                ".bss" => SectionTypes.BSS,
-                ".cormeta" => SectionTypes.CORMETA,
-                ".crt" => SectionTypes.CRT,
-                ".bind" => SectionTypes.BIND,
-                ".cet" => SectionTypes.CET,
-                ".sdata" => SectionTypes.SDATA,
-                ".glue_7t" => SectionTypes.GLUE_7T,
-                ".sbss" => SectionTypes.SBSS,
-                ".sbdata" => SectionTypes.SBDATA,
-                ".sbss$" => SectionTypes.SBSS_M,
-                ".sbdata$" => SectionTypes.SBDATA_M,
-                ".rodata1" => SectionTypes.RODATA1,
-                ".vsdata" => SectionTypes.VSDATA,
-                ".tbss" => SectionTypes.TBSS,
-                ".tdata" => SectionTypes.TDATA,
-                ".vfdata" => SectionTypes.VFDATA,
-                ".glue_7" => SectionTypes.GLUE_7,
-                ".vital" => SectionTypes.VITAL,
-                ".robase" => SectionTypes.ROBASE,
-                ".random" => SectionTypes.RANDOM,
-                ".bolt" => SectionTypes.BOLT,
-                _ => SectionTypes.NULL_SECTION_TYPE,
-            };
-        }
-
-        public static string GetSectionString(SectionTypes type)
-        {
-            if (type == SectionTypes.NULL_SECTION_TYPE) return "";
-
-            string typename = "." + type.ToString().ToLower().Replace("_m", "$");
-            return typename;
+            if (type == ProcessHandler.ProcessComponent.NULL_COMPONENT) return "";
+            return "." + type.ToString().ToLower().Replace("_m", "$").Replace("_", " ");
         }
 
 

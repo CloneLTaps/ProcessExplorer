@@ -2,12 +2,12 @@
 
 namespace ProcessExplorer.components.impl
 {
-    class SectionHeader : SuperHeader, ISection
+    class SectionHeader : SuperHeader
     {
-        private readonly SectionTypes sectionType;
         public readonly int bodyStartPoint, bodyEndPoint;
 
-        public SectionHeader(ProcessHandler processHandler, int startingPoint, SectionTypes sectionType) : base(processHandler, 10, 3, true)
+        public SectionHeader(ProcessHandler processHandler, int startingPoint, ProcessHandler.ProcessComponent sectionType) 
+            : base(processHandler, ProcessHandler.ProcessComponent.SECTION_HEADER, 10, 3, true)
         {
             string[,] sizeAndDesc = new string[10, 2];
             sizeAndDesc[0, 0] = "8"; sizeAndDesc[0, 1] = "Name (8 bytes) name of this section.";
@@ -22,17 +22,12 @@ namespace ProcessExplorer.components.impl
             sizeAndDesc[9, 0] = "4"; sizeAndDesc[9, 1] = "Characteristics (4 bytes) defines this sections properties.";
 
             StartPoint = startingPoint;
-            this.sectionType = sectionType;
+            Component = sectionType;
 
             populateArrays(sizeAndDesc);
 
             bodyStartPoint = Convert.ToInt32(OptionsForm.GetBigEndianValue(hexArray[4, 1]), 16);
             bodyEndPoint = Convert.ToInt32(OptionsForm.GetBigEndianValue(hexArray[3, 1]), 16) + bodyStartPoint;
-        }
-
-        public SectionTypes GetSectionType()
-        {
-            return sectionType;
         }
 
         public override void OpenForm(int row)

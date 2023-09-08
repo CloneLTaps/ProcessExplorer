@@ -7,7 +7,7 @@ namespace ProcessExplorer.components.impl
     {
         public bool validHeader, peThirtyTwoPlus;
 
-        public OptionalPeHeader(ProcessHandler processHandler, int startingPoint) : base(processHandler, 8, 3, true)
+        public OptionalPeHeader(ProcessHandler processHandler, int startingPoint) : base(processHandler, ProcessHandler.ProcessComponent.OPITIONAL_PE_HEADER, 8, 3, true)
         {
             string[,] sizeAndDesc = new string[8, 2];
             sizeAndDesc[0, 0] = "2"; sizeAndDesc[0, 1] = "Magic (2 bytes) specifies PE32 or PE32+ (aka PE64).";

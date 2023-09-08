@@ -7,7 +7,7 @@ namespace ProcessExplorer.components.impl
 {
     class OptionalPeHeader64 : SuperHeader
     {
-        public OptionalPeHeader64(ProcessHandler processHandler, int startingPoint) : base(processHandler, 21, 3, true)
+        public OptionalPeHeader64(ProcessHandler processHandler, int startingPoint) : base(processHandler, ProcessHandler.ProcessComponent.OPITIONAL_PE_HEADER_64, 21, 3, true)
         {
             string[,] sizeAndDesc = new string[21, 2];
             sizeAndDesc[0, 0] = "8"; sizeAndDesc[0, 1] = "ImageBase (8 bytes) prefered base address when loaded.";

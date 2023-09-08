@@ -49,6 +49,11 @@ namespace ProcessExplorer
             this.singleByteButton = new System.Windows.Forms.ToolStripButton();
             this.doubleByteButton = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator3 = new System.Windows.Forms.ToolStripSeparator();
+            this.replaceButton = new System.Windows.Forms.ToolStripButton();
+            this.characterSet = new System.Windows.Forms.ToolStripDropDownButton();
+            this.aSCIIToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.searchTextBox = new System.Windows.Forms.ToolStripTextBox();
+            this.replaceWithTextBox = new System.Windows.Forms.ToolStripTextBox();
             this.settingsLabel = new System.Windows.Forms.Label();
             this.blankTopLabel = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
@@ -201,7 +206,12 @@ namespace ProcessExplorer
             this.toolStripSeparator2,
             this.singleByteButton,
             this.doubleByteButton,
-            this.toolStripSeparator3});
+            this.toolStripSeparator3,
+            this.replaceButton,
+            this.replaceAllCheckBox,
+            this.characterSet,
+            this.searchTextBox,
+            this.replaceWithTextBox});
             this.toolStrip.Location = new System.Drawing.Point(0, 19);
             this.toolStrip.Name = "toolStrip";
             this.toolStrip.Size = new System.Drawing.Size(990, 25);
@@ -228,7 +238,7 @@ namespace ProcessExplorer
             this.decimalButton.Image = ((System.Drawing.Image)(resources.GetObject("decimalButton.Image")));
             this.decimalButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.decimalButton.Name = "decimalButton";
-            this.decimalButton.Size = new System.Drawing.Size(31, 22);
+            this.decimalButton.Size = new System.Drawing.Size(31, 21);
             this.decimalButton.Text = "Dec";
             this.decimalButton.ToolTipText = "Displays data in decimal";
             // 
@@ -309,6 +319,60 @@ namespace ProcessExplorer
             this.toolStripSeparator3.Name = "toolStripSeparator3";
             this.toolStripSeparator3.Size = new System.Drawing.Size(6, 25);
             // 
+            // replaceButton
+            // 
+            this.replaceButton.AutoSize = false;
+            this.replaceButton.CheckOnClick = true;
+            this.replaceButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.replaceButton.DoubleClickEnabled = true;
+            this.replaceButton.Image = ((System.Drawing.Image)(resources.GetObject("replaceButton.Image")));
+            this.replaceButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.replaceButton.Name = "replaceButton";
+            this.replaceButton.Size = new System.Drawing.Size(52, 21);
+            this.replaceButton.Text = "Replace";
+            this.replaceButton.Click += new System.EventHandler(this.ReplaceButton_Click);
+            // 
+            // characterSet
+            // 
+            this.characterSet.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.characterSet.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.aSCIIToolStripMenuItem});
+            this.characterSet.Image = ((System.Drawing.Image)(resources.GetObject("characterSet.Image")));
+            this.characterSet.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.characterSet.Name = "characterSet";
+            this.characterSet.Size = new System.Drawing.Size(90, 22);
+            this.characterSet.Text = "Character Set";
+            this.characterSet.ToolTipText = "Character Set";
+            // 
+            // aSCIIToolStripMenuItem
+            // 
+            this.aSCIIToolStripMenuItem.Name = "aSCIIToolStripMenuItem";
+            this.aSCIIToolStripMenuItem.Size = new System.Drawing.Size(102, 22);
+            this.aSCIIToolStripMenuItem.Text = "ASCII";
+            this.aSCIIToolStripMenuItem.Click += new System.EventHandler(this.ASCIIToolStripMenuItem_Click);
+            // 
+            // searchTextBox
+            // 
+            this.searchTextBox.BackColor = System.Drawing.Color.DarkGray;
+            this.searchTextBox.Name = "searchTextBox";
+            this.searchTextBox.Size = new System.Drawing.Size(150, 25);
+            this.searchTextBox.ToolTipText = "Data you want to search for and replace";
+            //
+            // replaceAllCheckBox
+            //
+            this.replaceAllCheckBox.AutoSize = false;
+            this.replaceAllCheckBox.Name = "replaceAllCheckBox";
+            this.replaceAllCheckBox.Text = "Replace All";
+            this.replaceAllCheckBox.Size = new System.Drawing.Size(90, 21);
+            this.replaceAllCheckBox.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            // 
+            // replaceWithTextBox
+            // 
+            this.replaceWithTextBox.BackColor = System.Drawing.Color.DarkGray;
+            this.replaceWithTextBox.Name = "replaceWithTextBox";
+            this.replaceWithTextBox.Size = new System.Drawing.Size(150, 25);
+            this.replaceWithTextBox.ToolTipText = "Data you want replace with";
+            // 
             // settingsLabel
             // 
             this.settingsLabel.BackColor = System.Drawing.Color.White;
@@ -386,6 +450,12 @@ namespace ProcessExplorer
         private DataGridViewTextBoxColumn Data;
         private DataGridViewTextBoxColumn ASCII;
         private Label blankTopLabel;
+        private ToolStripButton replaceButton;
+        private ToolStripControlHost replaceAllCheckBox = new ToolStripControlHost(new CheckBox());
+        private ToolStripTextBox searchTextBox;
+        private ToolStripTextBox replaceWithTextBox;
+        private ToolStripDropDownButton characterSet;
+        private ToolStripMenuItem aSCIIToolStripMenuItem;
     }
 }
 

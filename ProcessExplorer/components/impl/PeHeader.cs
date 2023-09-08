@@ -8,9 +8,10 @@ namespace ProcessExplorer.components
 {
     class PeHeader : SuperHeader
     {
-        public PeHeader(ProcessHandler processHandler, int startingPoint) : base(processHandler, 8, 3, true)
+        public PeHeader(ProcessHandler processHandler, int startingPoint) : base(processHandler, ProcessHandler.ProcessComponent.PE_HEADER, 8, 3, true)
         {
-            if(processHandler.everything.EndPoint <= processHandler.dosStub.EndPoint + 24)
+            if(processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.EVERYTHING).EndPoint <= 
+                processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.DOS_STUB).EndPoint + 24)
             {   // This means this file will not contain the nessary PE Header fields thus making this invalid
                 FailedToInitlize = true;
                 return;
@@ -32,8 +33,7 @@ namespace ProcessExplorer.components
             string[] signatureHex = hexArray[0, 1].Split(" ");
             if(signatureHex[0] != "50" || signatureHex[1] != "45" && signatureHex[2] != "00" || signatureHex[3] != "00")
             {   // This means this is not a valid PE since the header signature was incorrect
-                FailedToInitlize = true;
-                Console.WriteLine("FAILED");    
+                FailedToInitlize = true; 
                 return;
             }
 

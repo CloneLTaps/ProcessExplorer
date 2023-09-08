@@ -18,12 +18,48 @@ namespace ProcessExplorer
         public bool ReterunToTop { get; set; }
 
         public bool Is64Bit { get; set; }
+
         public OffsetType Offset { get; set; }
 
+        private int HeaderEndPoint { get; set; }
+
         // These following fields are all only initlized inside the constructor and thus marked 'readonly' 
-        public readonly SuperHeader everything, dosHeader, dosStub, peHeader, optionalPeHeader, optionalPeHeader64, optionalPeHeader32, optionalPeHeaderDataDirectories;
-        public readonly Dictionary<SuperHeader.SectionTypes, List<SuperHeader>> sectionHeaders = new Dictionary<SuperHeader.SectionTypes, List<SuperHeader>>();
+        public readonly Dictionary<ProcessComponent, SuperHeader> componentMap = new Dictionary<ProcessComponent, SuperHeader>();
         private readonly FileStream file;
+
+        /* This prevents us from getting an error if the map does not contain a specific ProcessComponent */
+        public SuperHeader GetComponentFromMap(ProcessComponent comp)
+        {
+            if (!componentMap.ContainsKey(comp)) return null;
+            return componentMap[comp];
+        }
+
+        public void RecalculateHeaders(SuperHeader comp)
+        {
+            if (comp.Component == ProcessComponent.DOS_HEADER) componentMap[ProcessComponent.DOS_HEADER] = new DosHeader(this);
+            else if (comp.Component == ProcessComponent.DOS_STUB) componentMap[ProcessComponent.DOS_STUB] = new DosStub(this);
+            else if (comp.Component == ProcessComponent.PE_HEADER) componentMap[ProcessComponent.PE_HEADER] = new PeHeader(this, GetComponentFromMap(ProcessComponent.DOS_STUB).EndPoint);
+            else if (comp.Component == ProcessComponent.OPITIONAL_PE_HEADER) componentMap[ProcessComponent.OPITIONAL_PE_HEADER] = new OptionalPeHeader(this, GetComponentFromMap(ProcessComponent.PE_HEADER).EndPoint);
+            else if (comp.Component == ProcessComponent.OPITIONAL_PE_HEADER_64) componentMap[ProcessComponent.OPITIONAL_PE_HEADER_64] = new OptionalPeHeader64(this, GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER).EndPoint);
+            else if (comp.Component == ProcessComponent.OPITIONAL_PE_HEADER_32) componentMap[ProcessComponent.OPITIONAL_PE_HEADER_32] = new OptionalPeHeader64(this, GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER).EndPoint);
+            else if (comp.Component == ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES)
+            {
+                if (((OptionalPeHeader)GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER)).peThirtyTwoPlus)
+                {
+                    componentMap[ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES] =
+                        new OptionalPeHeaderDataDirectories(this, GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER_64).EndPoint);
+                }
+                else
+                {
+                    componentMap[ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES] =
+                        new OptionalPeHeaderDataDirectories(this, GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER_32).EndPoint);
+                }
+            }
+            else
+            {
+                AssignSectionHeaders(GetComponentFromMap(ProcessComponent.EVERYTHING).hexArray, HeaderEndPoint);
+            }
+        }
 
         public ProcessHandler(FileStream file)
         {
@@ -39,38 +75,44 @@ namespace ProcessExplorer
             string[,] filesDecimal = new string[(int)Math.Ceiling(file.Length / 16.0), 2];
             string[,] filesBinary = new string[(int)Math.Ceiling(file.Length / 16.0), 2];
 
-            populateArrays(filesHex, filesDecimal, filesBinary); // Passes a reference to the memory address of the above arrays instead of their values
+            PopulateArrays(filesHex, filesDecimal, filesBinary); // Passes a reference to the memory address of the above arrays instead of their values
 
-            everything = new Everything(this, filesHex, filesDecimal, filesBinary);
-            if (everything.EndPoint <= 2) return; // The file is esentially blank  
+            componentMap.Add(ProcessComponent.EVERYTHING, new Everything(this, filesHex, filesDecimal, filesBinary));
+            if (GetComponentFromMap(ProcessComponent.EVERYTHING).EndPoint <= 2) return;            // The file is esentially blank  
 
-            if ((dosHeader = new DosHeader(this)).FailedToInitlize) return;                 // This means this is not a PE
-            if ((dosStub = new DosStub(this)).FailedToInitlize) return;                     // This means our PE does not contain a dos stub which is not normal
+            componentMap.Add(ProcessComponent.DOS_HEADER, new DosHeader(this));
+            if (GetComponentFromMap(ProcessComponent.DOS_HEADER).FailedToInitlize) return;         // This means this is not a PE
+
+            componentMap.Add(ProcessComponent.DOS_STUB, new DosStub(this));                 // This means our PE does not contain a dos stub which is not normal
+            if (GetComponentFromMap(ProcessComponent.DOS_STUB).FailedToInitlize) return;
             // Possible To:Do look into finding a PE that uses RichHeaders since those can sometimes appear before the PE Header
-            if ((peHeader = new PeHeader(this, dosStub.EndPoint)).FailedToInitlize) return; // This means our PE Header is either too short or does not contain the signature
+            componentMap.Add(ProcessComponent.PE_HEADER, new PeHeader(this, GetComponentFromMap(ProcessComponent.DOS_STUB).EndPoint));
+            if (GetComponentFromMap(ProcessComponent.PE_HEADER).FailedToInitlize) return;          // This means our PE Header is either too short or does not contain the signature
 
-            optionalPeHeader = new OptionalPeHeader(this, peHeader.EndPoint);
+            componentMap.Add(ProcessComponent.OPITIONAL_PE_HEADER, new OptionalPeHeader(this, GetComponentFromMap(ProcessComponent.PE_HEADER).EndPoint));
 
             int endPoint;
-            if (((OptionalPeHeader)optionalPeHeader).validHeader)
+            if (((OptionalPeHeader)GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER)).validHeader)
             { // This means we most likely have either 64 or 32 bit option headers
-                if (((OptionalPeHeader)optionalPeHeader).peThirtyTwoPlus)
+                if (((OptionalPeHeader)GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER)).peThirtyTwoPlus)
                 {   // This means our optional header is valid and that we are using 64 bit headers
-                    optionalPeHeader64 = new OptionalPeHeader64(this, optionalPeHeader.EndPoint);
-                    optionalPeHeaderDataDirectories = new OptionalPeHeaderDataDirectories(this, optionalPeHeader64.EndPoint);
+                    componentMap.Add(ProcessComponent.OPITIONAL_PE_HEADER_64, new OptionalPeHeader64(this, GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER).EndPoint));
+                    componentMap.Add(ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES, 
+                        new OptionalPeHeaderDataDirectories(this, GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER_64).EndPoint));
                 }
                 else
                 {
-                    optionalPeHeader32 = new OptionalPeHeader32(this, optionalPeHeader.EndPoint);
-                    optionalPeHeaderDataDirectories = new OptionalPeHeaderDataDirectories(this, optionalPeHeader32.EndPoint);
+                    componentMap.Add(ProcessComponent.OPITIONAL_PE_HEADER_32, new OptionalPeHeader32(this, GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER).EndPoint));
+                    componentMap.Add(ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES,
+                        new OptionalPeHeaderDataDirectories(this, GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER_32).EndPoint));
                 }
-                endPoint = optionalPeHeaderDataDirectories.EndPoint;
+                endPoint = GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES).EndPoint;
             }
             else
             {
-                optionalPeHeader = null; // This means we dont have a valid optional header
-                endPoint = peHeader.EndPoint;
+                endPoint = GetComponentFromMap(ProcessComponent.PE_HEADER).EndPoint;
             }
+            HeaderEndPoint = endPoint;
 
             // Recursively adds sections
             AssignSectionHeaders(filesHex, endPoint);
@@ -94,17 +136,21 @@ namespace ProcessExplorer
                         char asciiChar = b >= 32 && b <= 126 ? (char)b : '.';
                         ascii += asciiChar;
 
-                        if (totalCount++ > 8); // If we dont find it then we must of found all of the section headers
+                        if (totalCount++ > 8) return; // If we dont find it then we must of found all of the section headers
 
-                        if (SuperHeader.GetSectionType(ascii) != SuperHeader.SectionTypes.NULL_SECTION_TYPE)
+                        if (GetProcessComponent(ascii + " section header") != ProcessComponent.NULL_COMPONENT)
                         {
-                            SuperHeader.SectionTypes sectionType = SuperHeader.GetSectionType(ascii);
+                            ProcessComponent sectionType = GetProcessComponent(ascii + " section header");
+                            ProcessComponent sectionBodyType = GetProcessComponent(ascii + " section body");
                             SectionHeader header = new SectionHeader(this, startPoint, sectionType);
-                            List<SuperHeader> headerList = new List<SuperHeader>();
-                            headerList.Add(header);
-                            headerList.Add(new SectionBody(this, header.bodyStartPoint, header.bodyEndPoint, sectionType));
+                            SectionBody body = new SectionBody(this, header.bodyStartPoint, header.bodyEndPoint, sectionBodyType);
 
-                            sectionHeaders.Add(sectionType, headerList);
+                            if (componentMap.ContainsKey(sectionType)) componentMap[sectionType] = header;
+                            else componentMap.Add(sectionType, header);
+
+                            if(componentMap.ContainsKey(sectionBodyType)) componentMap[sectionBodyType] = body;
+                            else componentMap.Add(sectionBodyType, body);
+
                             AssignSectionHeaders(filesHex, header.EndPoint);
                             return;
                         }
@@ -117,14 +163,14 @@ namespace ProcessExplorer
 
         public int GetComponentsRowIndexCount(ProcessComponent component)
         {
-            SuperHeader header = GetSuperHeader(component);
+            SuperHeader header = GetComponentFromMap(component);
             if (header == null) return 0;
             return header.hexArray.GetLength(0) - 1;
         }
 
         public int GetComponentsColumnIndexCount(ProcessComponent component)
         {
-            SuperHeader header = GetSuperHeader(component);
+            SuperHeader header = GetComponentFromMap(component);
             if (header == null) return 0;
             return header.hexArray.GetLength(1) - 1;
         }
@@ -133,7 +179,7 @@ namespace ProcessExplorer
         /* Returns data that will fill up the DataDisplayView */
         public string GetValue(int row, int column, bool doubleByte, ProcessComponent component, DataType type)
         {
-            SuperHeader header = GetSuperHeader(component);
+            SuperHeader header = GetComponentFromMap(component);
             if (header == null) return "";
 
             switch(type)
@@ -151,13 +197,14 @@ namespace ProcessExplorer
          
         public void OpenDescrptionForm(ProcessComponent component, int row)
         {
-            SuperHeader header = GetSuperHeader(component);
+            SuperHeader header = GetComponentFromMap(component);
             if(header != null) header.OpenForm(row);
         }
 
 
+
         /* This will populate all our arrays  */
-        private void populateArrays(string[,] filesHex, string[,] filesDecimal, string[,] filesBinary)
+        private void PopulateArrays(string[,] filesHex, string[,] filesDecimal, string[,] filesBinary)
         {
             try
             {
@@ -203,12 +250,12 @@ namespace ProcessExplorer
 
         public void SaveFile(string outputPath)
         {
-            int length = everything.hexArray.GetLength(0);
+            int length = GetComponentFromMap(ProcessComponent.EVERYTHING).hexArray.GetLength(0);
             string[] hexDataArray = new string[length];
 
             for (int row = 0; row < length; row++)
             {
-                hexDataArray[row] = everything.hexArray[row, 1];
+                hexDataArray[row] = GetComponentFromMap(ProcessComponent.EVERYTHING).hexArray[row, 1];
             }
 
             try
@@ -238,34 +285,11 @@ namespace ProcessExplorer
             }
         }
 
-        public SuperHeader GetSuperHeader(ProcessComponent component)
-        {
-            switch (component)
-            {
-                case ProcessComponent.EVERYTHING: return everything;
-                case ProcessComponent.DOS_HEADER: return dosHeader;
-                case ProcessComponent.DOS_STUB: return dosStub;
-                case ProcessComponent.PE_HEADER: return peHeader;
-                case ProcessComponent.OPITIONAL_PE_HEADER: return optionalPeHeader;
-                case ProcessComponent.OPITIONAL_PE_HEADER_64: return optionalPeHeader64;
-                case ProcessComponent.OPITIONAL_PE_HEADER_32: return optionalPeHeader32;
-                case ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES: return optionalPeHeaderDataDirectories;
-            }
-
-            if (Enum.TryParse(component.ToString().Replace("_SECTION_HEADER", ""), false, out SuperHeader.SectionTypes comEnum) && sectionHeaders.ContainsKey(comEnum))
-                return sectionHeaders[comEnum][0];
-
-            if (Enum.TryParse(component.ToString().Replace("_SECTION_BODY", ""), false, out comEnum) && sectionHeaders.ContainsKey(comEnum))
-                return sectionHeaders[comEnum][1];
-
-            return null;
-        }
-
 
         public enum ProcessComponent
         {
             EVERYTHING, DOS_HEADER, DOS_STUB, PE_HEADER, OPITIONAL_PE_HEADER, OPITIONAL_PE_HEADER_64, OPITIONAL_PE_HEADER_32, OPITIONAL_PE_HEADER_DATA_DIRECTORIES,
-            SECTION_TEXT, SECTION_DATA, SECTION_RSRC, NULL_COMPONENT,
+            SECTION_BODY, SECTION_HEADER, NULL_COMPONENT,
 
             TEXT_SECTION_HEADER, TEXT_SECTION_BODY,     // Executable code
             DATA_SECTION_HEADER, DATA_SECTION_BODY,     // Initlized data

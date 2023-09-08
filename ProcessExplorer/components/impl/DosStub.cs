@@ -4,16 +4,20 @@ namespace ProcessExplorer.components
 {
     class DosStub : SuperHeader
     {
-        public DosStub(ProcessHandler processHandler) : base(processHandler, 1, 3, false)
+        public DosStub(ProcessHandler processHandler) : base(processHandler, ProcessHandler.ProcessComponent.DOS_STUB, 1, 3, false)
         {
-            if (processHandler.everything.EndPoint <= processHandler.dosHeader.EndPoint)
+            Console.WriteLine("Start DosStub");
+            if (processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.EVERYTHING).EndPoint 
+                <= processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.DOS_HEADER).EndPoint) // abcdefghijklmnop _MouseHandlerInf
             {   // This means our PE only consits of a PE Header 
                 FailedToInitlize = true;
                 return;
             }
+            Console.WriteLine("Start DosStub p2");
 
-            StartPoint = processHandler.dosHeader.EndPoint;
-            string littleEndianHex = processHandler.dosHeader.hexArray[processHandler.dosHeader.RowSize - 1, 1];
+            SuperHeader dosHeader = processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.DOS_HEADER);
+            StartPoint = dosHeader.EndPoint;
+            string littleEndianHex = dosHeader.hexArray[dosHeader.RowSize - 1, 1];
             string[] hexBytes = littleEndianHex.Split(' ');
             Array.Reverse(hexBytes); // Reverse the order of bytes
             string hexEndPoint = string.Concat(hexBytes);

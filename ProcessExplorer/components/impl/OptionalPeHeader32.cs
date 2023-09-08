@@ -7,7 +7,7 @@ namespace ProcessExplorer.components.impl
 {
     class OptionalPeHeader32 : SuperHeader
     {
-        public OptionalPeHeader32(ProcessHandler processHandler, int startingPoint) : base(processHandler, 22, 3, true)
+        public OptionalPeHeader32(ProcessHandler processHandler, int startingPoint) : base(processHandler, ProcessHandler.ProcessComponent.OPITIONAL_PE_HEADER_32, 22, 3, true)
         {
             string[,] sizeAndDesc = new string[22, 2];
             sizeAndDesc[0, 0] = "4"; sizeAndDesc[0, 1] = "BaseOfData (4 bytes) points to starting relative virtual address of the .data section";

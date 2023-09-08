@@ -3,7 +3,8 @@ namespace ProcessExplorer.components.impl
 {
     class OptionalPeHeaderDataDirectories : SuperHeader
     {
-        public OptionalPeHeaderDataDirectories(ProcessHandler processHandler, int startingPoint) : base(processHandler, 30, 3, true)
+        public OptionalPeHeaderDataDirectories(ProcessHandler processHandler, int startingPoint) 
+            : base(processHandler, ProcessHandler.ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES, 30, 3, true)
         {
             string[,] sizeAndDesc = new string[30, 2];
             sizeAndDesc[0, 0] = "4"; sizeAndDesc[0, 1] = "Export Table Pointer (4 bytes) RVA pointer, describing exported functions and symbols.";

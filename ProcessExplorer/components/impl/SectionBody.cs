@@ -1,13 +1,13 @@
 ﻿
 namespace ProcessExplorer.components.impl
 {
-    class SectionBody : SuperHeader, ISection
+    class SectionBody : SuperHeader
     {
-        private readonly SectionTypes sectionType;
 
-        public SectionBody(ProcessHandler processHandler, int startingPoint, int endPoint, SectionTypes sectionType) : base(processHandler, 1, 3, false)
+        public SectionBody(ProcessHandler processHandler, int startingPoint, int endPoint, ProcessHandler.ProcessComponent sectionType) 
+            : base(processHandler, ProcessHandler.ProcessComponent.SECTION_BODY, 1, 3, false)
         {
-            this.sectionType = sectionType;
+            Component = sectionType;
             StartPoint = startingPoint;
             EndPoint = endPoint;
             PopulateNonDescArrays();
@@ -18,9 +18,5 @@ namespace ProcessExplorer.components.impl
             return; // No custom forms required here
         }
 
-        public SectionTypes GetSectionType()
-        {
-            return sectionType;
-        }
     }
 }
