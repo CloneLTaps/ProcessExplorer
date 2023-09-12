@@ -12,241 +12,49 @@ namespace ProcessExplorer.components
     {
         protected ProcessHandler processHandler;
 
-        public string[,] hexArray { get; private set; }
-        public string[,] binaryArray { get; private set; }
-        public string[,] deciArray { get; private set; }
-
         /* StartPoint and EndPoint will be saved using hex */
         public int StartPoint { get; protected set; }
         public int EndPoint { get; protected set; }
 
-        public int RowSize { get; private set; }
+        public int RowSize { get; protected set; }
         public int ColumnSize { get; private set; }
 
-        public bool ShrinkDataSection { get; private set; } // This is for headers that show descriptions 
+        public int[] Size { get; protected set; }
+        public string[] Desc { get; protected set; }
 
         public bool FailedToInitlize { get; protected set; }
 
         public ProcessHandler.ProcessComponent Component { get; protected set; }
 
-        public Dictionary<int, string> characteristics { get; protected set; }
+        public Dictionary<int, string> Characteristics { get; protected set; }
 
-        public SuperHeader(ProcessHandler processHandler, ProcessHandler.ProcessComponent component, int rowSize, int columnSize, bool shrinkDataSection)
+        public SuperHeader(ProcessHandler processHandler, ProcessHandler.ProcessComponent component, int rowSize, int columnSize)
         {
-            this.ShrinkDataSection = shrinkDataSection;
             this.processHandler = processHandler;
             this.ColumnSize = columnSize;
             this.Component = component;
             this.RowSize = rowSize;
 
-            hexArray = new string[rowSize, columnSize];
-            binaryArray = new string[rowSize, columnSize - 1]; // I subtract 1 here because theres no point saving the descriptions more than once
-            deciArray = new string[rowSize, columnSize - 1];   // I subtract 1 here because theres no point saving the descriptions more than once
             FailedToInitlize = false;
         }
 
         public abstract void OpenForm(int row);
 
-        protected void SetAllArrays(string[,] hexArray, string[,] deciArray, string[,] binaryArray)
+        protected void SetEndPoint()
         {
-            this.hexArray = hexArray;
-            this.deciArray = deciArray;
-            this.binaryArray = binaryArray;
-        }
+            if (Size == null) return;
 
-        protected void PopulateNonDescArrays()
-        {
-            int startingIndex = StartPoint <= 0 ? 0 : (int) Math.Floor(StartPoint / 16.0); // Theres 16 bytes of hex per row
-            int totalByteSize = StartPoint;
-            int hexValuesSize = startingIndex * 16;
-
-            // I need to first redefine the size of the arrays
-            string[,] filesHex = processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.EVERYTHING).hexArray;
-            int rowSize = GetRowCount(filesHex, startingIndex);
-            hexArray = new string[rowSize, ColumnSize];
-            binaryArray = new string[rowSize, ColumnSize - 1]; // I subtract 1 here because theres no point saving the descriptions more than once
-            deciArray = new string[rowSize, ColumnSize - 1];   // I subtract 1 here because theres no point saving the descriptions more than once
-
-            int rowStartingPoint = Convert.ToInt32(filesHex[startingIndex, 0], 16); // defines the offset in the starting row
-
-            long offsetSum;
-            string[] splitHexData;
-            int ourArrayIndex = 0;
-            for (int i = startingIndex; i < filesHex.GetLength(0); i++)
+            int count = StartPoint;
+            foreach (int i in Size)
             {
-                string[] dataRow = filesHex[i, 1].Split(' ');
-                string correctedHexData = "";
-                int rowOffset = -1;
-                for(int j = 0; j < 16; j++)
-                {
-                    int value = rowStartingPoint + ((i - startingIndex) * 16) + j + 1;
-                    if (value >= EndPoint)
-                    {
-                        correctedHexData += dataRow[j] + " ";
-                        offsetSum = int.Parse(filesHex[i, 0].Replace("0x", ""), NumberStyles.HexNumber) + (rowOffset < 0 ? 0 : rowOffset);
-                        hexArray[ourArrayIndex, 0] = "0x" + (offsetSum).ToString("X");
-                        hexArray[ourArrayIndex, 1] = correctedHexData;
-                        hexArray[ourArrayIndex, 2] = filesHex[i, 2];
-
-                        splitHexData = correctedHexData.Split(' ').Where(str => !string.IsNullOrWhiteSpace(str)).ToArray(); // Somehow a white space got in here or something...
-                        deciArray[ourArrayIndex, 0] = offsetSum.ToString();
-                        deciArray[ourArrayIndex, 1] = string.Join(" ", Array.ConvertAll(splitHexData, hex => long.Parse(hex, NumberStyles.HexNumber)));
-
-                        binaryArray[ourArrayIndex, 0] = Convert.ToString(offsetSum, 2);
-                        binaryArray[ourArrayIndex, 1] = string.Join(" ", splitHexData.Select(hex => Convert.ToString(long.Parse(hex, NumberStyles.HexNumber), 2)));
-                        return;
-                    }
-
-                    if (value < StartPoint) continue;
-                    if (rowOffset == -1) rowOffset = j; // Sets how many bytes into the row it took to reach our first value
-                  
-                    if(dataRow.Length - 1 >= j) correctedHexData += dataRow[j] + " ";
-                }
-
-                offsetSum = long.Parse(filesHex[i, 0].Replace("0x", ""), NumberStyles.HexNumber) + (rowOffset < 0 ? 0 : rowOffset);
-                hexArray[ourArrayIndex, 0] = "0x" + (offsetSum).ToString("X");
-                hexArray[ourArrayIndex, 1] = correctedHexData;
-                hexArray[ourArrayIndex, 2] = filesHex[i, 2];
-
-                splitHexData = correctedHexData.Split(' ').Where(str => !string.IsNullOrWhiteSpace(str)).ToArray(); // Somehow a white space got in here or something...
-                deciArray[ourArrayIndex, 0] = offsetSum.ToString();
-                deciArray[ourArrayIndex, 1] = string.Join(" ", Array.ConvertAll(splitHexData, hex => long.Parse(hex, NumberStyles.HexNumber)));
-
-                binaryArray[ourArrayIndex, 0] = Convert.ToString(offsetSum, 2);
-                binaryArray[ourArrayIndex, 1] = string.Join(" ", splitHexData.Select(hex => Convert.ToString(long.Parse(hex, NumberStyles.HexNumber), 2)));
-                ourArrayIndex++;
+                count += i;
             }
-        }
-
-        private int GetRowCount(string[,] filesHex, int startingIndex)
-        {
-            int finalCount = startingIndex;
-            for (int i = startingIndex; i < filesHex.GetLength(0); i++)
-            {
-                for (int j = 0; j < 16; j++)
-                {
-                    // (i - startingIndex) denotes the row, * 16 multiples it by 16 bytes per row, and + (j + 1) adds the individual row bytes
-                    int value = StartPoint + ((i - startingIndex) * 16) + j + 1;
-                    if (value >= EndPoint) return i + 1 - startingIndex;
-                }
-                finalCount = i;
-            }
-            return finalCount + 1 - startingIndex;
-        }
-
-
-        /// <param name="sizeAndDesc"> will be passed from the sub class and will contain the size in bytes  
-        /// of each field and the description that explains what it does </param>
-        protected void populateArrays(string[,] sizeAndDesc)
-        {
-            string[] hexValues = new string[0];
-
-            /** The following loop will be used to increase the size of the hexValues array. It will determine how many bytes 
-             * this header file will need it will then add a new row of 16 after each 
-             */
-            int startingIndex = StartPoint <= 0 ? 0 : (int)Math.Floor(StartPoint / 16.0); // 2
-            int totalByteSize = StartPoint;
-            int hexValuesSize = startingIndex * 16;
-
-            for (int i = 0; i < sizeAndDesc.GetLength(0); i++)
-            {
-                totalByteSize += Convert.ToInt32(sizeAndDesc[i, 0]); 
-
-                if (totalByteSize > hexValuesSize)
-                {
-                    int index = hexValuesSize <= 0 ? 0 : ((int) Math.Floor(hexValuesSize / 16.0)); // Prevents a divide by 0 issue
-                    if (index >= processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.EVERYTHING).hexArray.GetLength(0)) break; // This means we have gone over the size of the array
-                    
-                    string[] newArray = processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.EVERYTHING).hexArray[index, 1].Split(' '); // Adds the next row
-                    Array.Resize(ref hexValues, hexValues.Length + newArray.Length);
-                    Array.Copy(newArray, 0, hexValues, hexValues.Length - newArray.Length, newArray.Length);
-                    hexValuesSize += 16; // This adds an extra row aka 16 elements (we call this after getting index to avoid needing to subtract 1)
-                }
-            }
-
-            int skipAmount = StartPoint % 16; // The amount we need to skip before we reach our target byte
-            int previousBytesize = 0;
-            for (int i = 0; i < hexArray.GetLength(0); i++)
-            {
-                int newByteSize = Convert.ToInt32(sizeAndDesc[i, 0]);
-                // I need to subtract StartPoint because I am using the offsets to gage the sizes 
-                int previousOffset = (i > 0 ? (int.Parse(hexArray[i - 1, 0].Replace("0x", ""), NumberStyles.HexNumber)) - StartPoint : 0);
-                int newOffset = previousBytesize + previousOffset;
-
-                string newHexValues = string.Join(" ", hexValues.Skip(newOffset + skipAmount).Take(newByteSize));
-                hexArray[i, 0] = "0x" + (i > 0 ? (newOffset + StartPoint).ToString("X") : (StartPoint).ToString("X"));
-                hexArray[i, 1] = newHexValues;
-                hexArray[i, 2] = sizeAndDesc[i, 1];
-
-                long deciOffset = (i > 0 ? (newOffset + StartPoint) : StartPoint);
-                string[] splitNewHexValues = newHexValues.Split(' ').Where(str => !string.IsNullOrWhiteSpace(str)).ToArray(); // Somehow a white space got in here or something...;
-                deciArray[i, 0] = deciOffset.ToString();
-                deciArray[i, 1] = string.Join(" ", Array.ConvertAll(splitNewHexValues, hex => long.Parse(hex, NumberStyles.HexNumber)));
-                binaryArray[i, 0] = Convert.ToString(deciOffset, 2); // 2 specifies to use binary
-                binaryArray[i, 1] = string.Join(" ", splitNewHexValues.Select(hex => Convert.ToString(long.Parse(hex, NumberStyles.HexNumber), 2)));
-                previousBytesize = newByteSize;
-            }
-            // This will set the ending point
-            int lastOffset = int.Parse((hexArray[RowSize - 1, 0]).Replace("0x", ""), NumberStyles.HexNumber) - StartPoint;
-            int lastByteSize = Convert.ToInt32(sizeAndDesc[RowSize - 1, 0]);
-            EndPoint = lastOffset + lastByteSize + StartPoint;
-        }
-
-        public string GetHex(int row, int column, bool doubleByte)
-        {
-            if (row > hexArray.GetLength(0) - 1 || column > hexArray.GetLength(1)) return "";
-            if (!doubleByte || column == 0 || column == 2)
-            {   
-                if(column == 1 || column == 2 || processHandler.Offset == ProcessHandler.OffsetType.FILE_OFFSET) return hexArray[row, column]; // Returns the single byte data, offset, or the description
-                return "0x" + GetRelativeOffsetDecimal(row).ToString("X");
-            }
-            // This will reverse the hex and switch it from little-endian to big-endian
-            string[] values = hexArray[row, column].Split(' ');
-            return GetBigEndian(values);
-        }
-
-        public string GetBinary(int row, int column, bool doubleByte)
-        {
-            if (row > binaryArray.GetLength(0) - 1 || column > hexArray.GetLength(1)) return "";
-            if(column > 1) return hexArray[row, column]; // This is here because this array does not contain the desc
-            if (column == 0 && processHandler.OffsetsInHex) return hexArray[row, 0]; // This means the offsets should be displayed in hex
-            if (!doubleByte || column == 0)
-            {   // This returns the binary data or the offsets if the offsets are set to file offsets
-                if (column == 1 || processHandler.Offset == ProcessHandler.OffsetType.FILE_OFFSET) return binaryArray[row, column]; // Returns the single byte data or the offset
-                return Convert.ToString(GetRelativeOffsetDecimal(row), 2);
-            }
-            // This will reverse the binary and switch it from little-endian to big-endian
-            string[] values = hexArray[row, column].Split(' ');
-            string bigEndianHex = GetBigEndian(values);
-            return string.Join(" ", bigEndianHex.Split(' ').Select(hexPair => Convert.ToString(Convert.ToInt64(hexPair, 16), 2)));
-        }
-
-        public string GetDecimal(int row, int column, bool doubleByte)
-        {
-            if (row > deciArray.GetLength(0) - 1 || column > hexArray.GetLength(1)) return "";
-            if (column > 1) return hexArray[row, column]; // This is here because this array does not contain the desc
-            if (column == 0 && processHandler.OffsetsInHex) return hexArray[row, 0]; // This means the offsets should be displayed in hex
-            if (!doubleByte || column == 0)
-            {   // This returns the decimal data or the offsets if the offsets are set to file offsets
-                if(column == 1 || processHandler.Offset == ProcessHandler.OffsetType.FILE_OFFSET) return deciArray[row, column]; // Returns the single byte data or the offset
-                return GetRelativeOffsetDecimal(row).ToString();
-            }
-            // This will reverse the decimal and switch it from little-endian to big-endian (only for the data)
-            string[] values = hexArray[row, column].Split(' ');
-            string bigEndianHex = GetBigEndian(values);
-            return string.Join(" ", bigEndianHex.Split(' ').Select(hexPair => ulong.Parse(hexPair, NumberStyles.HexNumber)));
-        }
-
-        private int GetRelativeOffsetDecimal(int row)
-        {   // This is only for offsets which is why the column is set to a constant of 0
-            int initialOffset = Convert.ToInt32(hexArray[0, 0], 16);
-            int offset = Convert.ToInt32(hexArray[row, 0], 16);
-            return offset - initialOffset;
+            EndPoint = count;
         }
 
         private string GetBigEndian(string[] hexPairs)
         {
-            if (ShrinkDataSection)
+            if (Size != null)
             {
                 Array.Reverse(hexPairs);
                 string bigEndian = string.Concat(hexPairs);
@@ -275,12 +83,161 @@ namespace ProcessExplorer.components
             return reversedHexValues;
         }
 
+        /// <param name="column"> Column of 0 means offset, column of 1 means data, and column of 2 means description. </param>
+        public string GetData(int row, int column, ProcessHandler.DataType dataType, bool bigEndian, bool inFileOffset)
+        {
+            //Console.WriteLine(" ");
+            if(GetType().Name != "Everything" && column != 2 && column != 0)
+            {
+                Console.WriteLine("SubHeader:" + this.GetType().Name + " Row:" + row + " Column:" + column + " BigEndian:" + bigEndian + " DataType:" + dataType.ToString() +
+                 " NullSize:" + (Size == null) + " FailedToInitlize:" + FailedToInitlize + " RowSize:" + (Size != null ? Size.Length : 0) + " StartPoint:" + StartPoint
+                + " EndPoint:" + EndPoint);
+            }
+            if(FailedToInitlize) return "";  // Something went wrong with this file so don't return any text
+            if (Size != null && row >= Size.Length) return "";  // This returns the blank text for index larger than the size of our headers
+
+            if (Component == ProcessHandler.ProcessComponent.EVERYTHING)
+            {
+                if(column == 0 && processHandler.OffsetsInHex) return GetCorrectFormat(row, column, ProcessHandler.DataType.HEX, bigEndian);
+
+            }
+            int firstRow = (int)Math.Floor(StartPoint / 16.0);  // First row of our data
+            if (GetType().Name != "Everything" && column != 2 && column != 0)
+            {
+                Console.WriteLine("\t Row:" + row + " FirstRow:" + firstRow + " Total:" + ((row + firstRow) * 16) + " Modolo:" + (StartPoint % 16));
+            }
+
+            if (Size == null && (row + firstRow) * 16 >= EndPoint) return "";  // This will handle blank spots in sections and the Dos Stub     
+
+            // Something like Dos Stub or section bodies (mirrors the original data) while being aligned with 16 byte rows
+            if (Size == null && StartPoint % 16 == 0)
+            {
+                if (column == 0) {
+                    int off = row * 16;
+                    return GetOffset(inFileOffset ? off + StartPoint : off, processHandler.OffsetsInHex ? ProcessHandler.DataType.HEX : dataType);
+                }
+                return GetCorrectFormat(row + firstRow, column, dataType, bigEndian);
+            }
+
+            if (Desc != null && column == 2) return Desc[row];  // This means its just asking for the custom description
+
+            int relativeOfffset = 0;  // Amount of bytes into the row till we reach our target data relative to the start of this section
+            int bytes = Size == null ? 16 : Size[row];  // How many bytes I need to read from the array
+            if (Size != null)
+            {   // The following is designed for headers
+                for (int i = 0; i < row; i++)
+                {
+                    relativeOfffset += Size[i];  // Adding the byte size of our rows data to the offset
+                }
+            }
+
+            if (column == 0)
+            {
+                Console.WriteLine("COLUMNS 0 GETOFFSET:" + GetOffset((inFileOffset ? relativeOfffset + StartPoint : relativeOfffset), dataType) + " RelativeOffset:" + relativeOfffset);
+                return GetOffset((inFileOffset ? relativeOfffset + StartPoint : relativeOfffset), processHandler.OffsetsInHex ? ProcessHandler.DataType.HEX : dataType);  // This means we just need to return the offset
+            }
+            relativeOfffset += StartPoint % 16;
+
+            // At this point we should only be working with data as the file offsets and descriptions should of been taken care of already
+            int startingDataRow = firstRow + (int)Math.Floor(relativeOfffset / 16.0);  // Row where our data begins (data may extend onto additional rows)
+
+            int fileStartOffset = relativeOfffset + (startingDataRow * 16);  // Target data's offset relative to the start of the file
+
+            if (GetType().Name != "Everything" && column != 2 && column != 0)
+            {
+                Console.WriteLine("\t RelOffset:" + relativeOfffset + " FileOffset:" + fileStartOffset + " Bytes:" + bytes + " GetOffSet:" + 
+                    (column == 0 ? GetOffset((inFileOffset ? relativeOfffset + StartPoint : relativeOfffset), dataType) : "") + " FirstRow:" + firstRow + " StartingDataRow:" + startingDataRow);
+            }
+            
+            string[] data = null;
+            int startingRowOffset = relativeOfffset - ((startingDataRow - firstRow) * 16);  // Offset relative to the starting row
+
+            for (int i = startingDataRow; i<processHandler.FilesHex.GetLength(0); i++)
+            {   // Looping through our rows
+                if (data == null) data = GetCorrectFormat(i, 1, bigEndian ? ProcessHandler.DataType.HEX : dataType, false).Split(' ');
+                else data = data.Concat(GetCorrectFormat(i, 1, bigEndian ? ProcessHandler.DataType.HEX : dataType, false).Split(' ')).ToArray();
+
+                int weight = Size == null ? ((row - startingDataRow + 1) * 16) : data.Length;  // First half works for sections and Dos headers and second works for normal headers
+
+                if (column != 2 && column != 0)
+                {
+                    Console.WriteLine("\t SubHeader:" + this.GetType().Name + " i:" + i + " Row:" + row + " StartingDataRow:" + startingDataRow + " RelOffset:" + relativeOfffset
+                         + " StartRowOffset:" + startingRowOffset +  " Bytes:" + bytes + " Total:" + weight  + " DataSize:" + data.Length);
+                }
+
+                if (weight >= startingRowOffset + bytes) break;  // This means our data array now contains enough data to retrieve the requested data
+            }
+
+            string finalData = string.Join(" ", data.Skip(startingRowOffset).Take(bytes));
+
+            if (column != 2 && column != 0)
+            {
+                Console.WriteLine("\t Result:" + string.Join(" ", data.Skip(startingRowOffset).Take(bytes)) + " RelOffset:" + relativeOfffset + " bytes:" + bytes 
+                     + " StartingDataRow:" + startingDataRow + " DataSize:" + data.Length + " Data:" + string.Join(" ", data) + " BigEndian:" + bigEndian + " Data:" + finalData );
+            }
+
+
+            if (bigEndian)
+            {
+                string splitHex = GetBigEndian(finalData.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
+
+                if (dataType == ProcessHandler.DataType.HEX) return splitHex;
+                
+                string[] hexArray = splitHex.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                switch (dataType)
+                {
+                    case ProcessHandler.DataType.DECIMAL: return string.Join(" ", hexArray.Select(hexPair => ulong.Parse(hexPair, NumberStyles.HexNumber)));
+                    case ProcessHandler.DataType.BINARY: return string.Join(" ", hexArray.Select(hexPair => Convert.ToString(Convert.ToInt64(hexPair, 16), 2)));
+                }
+            }
+            return finalData;
+        }
+
+        /// <summary>
+        ///  Takes in a normal decimal integer for offset and returns the converted data type in string form
+        /// </summary>
+        private string GetOffset(int offset, ProcessHandler.DataType dataType)
+        {
+            switch(dataType)
+            {
+                case ProcessHandler.DataType.DECIMAL: return offset.ToString();
+                case ProcessHandler.DataType.HEX: return "0x" + offset.ToString("X");
+                case ProcessHandler.DataType.BINARY: return Convert.ToString(offset, 2);
+            }
+            return "";
+        }
+
+        private string GetCorrectFormat(int row, int column, ProcessHandler.DataType dataType, bool bigEndian)
+        {
+            if(bigEndian && column == 1)
+            {
+                string bigEndianHex = GetBigEndian(processHandler.FilesHex[row, column].Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
+                string[] hexArray = bigEndianHex.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                switch (dataType)
+                {
+                    case ProcessHandler.DataType.HEX: return bigEndianHex;
+                    case ProcessHandler.DataType.DECIMAL: return string.Join(" ", hexArray.Select(hexPair => ulong.Parse(hexPair, NumberStyles.HexNumber)));
+                    case ProcessHandler.DataType.BINARY: return string.Join(" ", hexArray.Select(hexPair => Convert.ToString(Convert.ToInt64(hexPair, 16), 2)));
+                }
+            }
+
+            if (column == 2) return processHandler.FilesHex[row, 2];
+
+            return dataType switch
+            {
+                ProcessHandler.DataType.HEX => processHandler.FilesHex[row, column],
+                ProcessHandler.DataType.DECIMAL => processHandler.FilesDecimal[row, column],
+                ProcessHandler.DataType.BINARY => processHandler.FilesBinary[row, column],
+                _ => "",
+            };
+        }
+
         protected string[] ReadCharacteristics(string hexString)
         {
-            int characteristicsValue = Convert.ToInt32(hexString, 16);
+            long characteristicsValue = Convert.ToInt64(hexString, 16);
             List<string> presentCharacteristics = new List<string>();
 
-            foreach (var pair in characteristics)
+            foreach (var pair in Characteristics)
             {
                 int characteristicFlag = pair.Key;
                 string value = pair.Value;
@@ -295,6 +252,31 @@ namespace ProcessExplorer.components
             return presentCharacteristics.ToArray();
         }
 
+        public string GetFilesHex(int row, int column)
+        {
+            return processHandler.FilesHex[row, column];
+        }
+
+        public string GetFilesDecimal(int row, int column)
+        {
+            return processHandler.FilesDecimal[row, column];
+        }
+
+        public string GetFilesBinary(int row, int column)
+        {
+            return processHandler.FilesBinary[row, column];
+        }
+
+        public int GetFilesRows()
+        {
+            return processHandler.FilesHex.GetLength(0);
+        }
+
+        public int GetFilesColumns()
+        {
+            return processHandler.FilesHex.GetLength(1);
+        }
+
         public static string GetSectionString(ProcessHandler.ProcessComponent type)
         {
             if (type == ProcessHandler.ProcessComponent.NULL_COMPONENT) return "";
@@ -305,16 +287,14 @@ namespace ProcessExplorer.components
         protected class OptionsForm : Form
         {
             private readonly SuperHeader header;
-            private readonly ComboBox comboBox;
-            private readonly DateTimePicker dateTimePicker;
-            private readonly CheckedListBox checkedListBox;
+            public readonly ComboBox comboBox;
+            public readonly DateTimePicker dateTimePicker;
+            public readonly CheckedListBox checkedListBox;
             private Button okButton;
 
 #pragma warning disable CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
             public OptionsForm(SuperHeader header, string? bigEndianHex, string windowName, int selectedRow, string[] dropDownComboBoxArgs, string[] checkBoxComboBoxArgs, DateTime? initialDateTime)
             {
-                this.header = header;
-
                 Text = windowName;
                 InitializeComponents();
 
@@ -329,7 +309,9 @@ namespace ProcessExplorer.components
                     comboBox.Items.AddRange(dropDownComboBoxArgs);
 
                     // Set the selected value 
-                    string selectedValue = bigEndianHex != null ? bigEndianHex : GetBigEndianValue(header.hexArray[selectedRow, 1]); // This returns the big endian hex
+                    string selectedValue = bigEndianHex != null ? bigEndianHex : header.GetData(selectedRow, 1, ProcessHandler.DataType.HEX, true, false); // This returns the big endian hex
+                    Console.WriteLine("BigEndianHex:" + bigEndianHex + " GetValue:" + header.GetData(selectedRow, 1, ProcessHandler.DataType.HEX, true, false) +
+                       " OldGetValue:" + GetBigEndianValue(header.GetData(selectedRow, 1, ProcessHandler.DataType.HEX, false, false)));
                     string matchingString = dropDownComboBoxArgs.FirstOrDefault(str => {
                         int hexPrefixLength = str.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? 2 : 0;
                         return str.Length > hexPrefixLength && str.Substring(hexPrefixLength).StartsWith(selectedValue, StringComparison.OrdinalIgnoreCase);
@@ -341,7 +323,7 @@ namespace ProcessExplorer.components
                     Width = Math.Max(comboBox.Right + okButton.Width + 30, 300); // Account for padding
                     Controls.Add(comboBox);
                 }
-                else if (checkBoxComboBoxArgs != null && header.characteristics != null)
+                else if (checkBoxComboBoxArgs != null && header.Characteristics != null)
                 {
                     checkedListBox = new CheckedListBox();
                     checkedListBox.Location = new Point(20, 20);
@@ -351,7 +333,9 @@ namespace ProcessExplorer.components
 
                     checkedListBox.Items.AddRange(checkBoxComboBoxArgs);
 
-                    string selectedValue = bigEndianHex != null ? bigEndianHex : GetBigEndianValue(header.hexArray[selectedRow, 1]); // This returns the big endian hex
+                    string selectedValue = bigEndianHex != null ? bigEndianHex : header.GetData(selectedRow, 1, ProcessHandler.DataType.HEX, true, false); // This returns the big endian hex
+                    Console.WriteLine("BigEndianHex:" + bigEndianHex + " GetValue:" + header.GetData(selectedRow, 1, ProcessHandler.DataType.HEX, true, false) +
+                        " OldGetValue:" + GetBigEndianValue(header.GetData(selectedRow, 1, ProcessHandler.DataType.HEX, false, false)));
                     string[] combinedStrings = header.ReadCharacteristics(selectedValue);  
 
                     int i = 0;
@@ -376,7 +360,7 @@ namespace ProcessExplorer.components
                     Console.WriteLine("Date and time" + initialDateTime);
 
                     dateTimePicker = new DateTimePicker();
-                    dateTimePicker.Location = new System.Drawing.Point(20, 20);
+                    dateTimePicker.Location = new Point(20, 20);
                     dateTimePicker.Width = 200; 
                     dateTimePicker.Format = DateTimePickerFormat.Custom;
                     dateTimePicker.CustomFormat = "MM/dd/yyyy HH:mm:ss"; 
@@ -413,7 +397,38 @@ namespace ProcessExplorer.components
 
             private void OkButton_Click(object sender, EventArgs e)
             {
+/*                foreach (var item in checkedListBox.CheckedItems)
+                {
+                    item.
+                }*/
                 Close();
+            }
+
+            public string GetUpdatedCharacterisitcs()
+            {
+                long characteristicsValue = 0;
+
+                foreach (var item in checkedListBox.CheckedItems)
+                {
+                    // Split the item's text to get the hex value part
+                    string[] parts = item.ToString().Split('-');
+                    if (parts.Length == 2)
+                    {
+                        // Trim and parse the hex value part
+                        string hexValue = parts[0].Trim();
+                        Console.WriteLine("HexValue:" + hexValue);
+                        if (hexValue.StartsWith("0x", StringComparison.OrdinalIgnoreCase) && long.TryParse(hexValue.Substring(2), NumberStyles.HexNumber, null, out long hexFlag))
+                        {
+                            // OR the hexFlag with the characteristicsValue
+                            characteristicsValue |= hexFlag;
+                        }
+                    }
+                }
+
+                // Convert the resulting value to a hex string
+                string hexString = characteristicsValue.ToString("X");
+
+                return hexString;
             }
 
             public static string GetBigEndianValue(string littleEndian)

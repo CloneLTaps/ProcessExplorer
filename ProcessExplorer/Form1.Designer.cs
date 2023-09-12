@@ -152,6 +152,7 @@ namespace ProcessExplorer
             this.dataGridView.TabIndex = 0;
             this.dataGridView.VirtualMode = true;
             this.dataGridView.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.DataGridView_CellContentClick);
+            this.dataGridView.CellValuePushed += DataGridView_CellValuePushed;
             // 
             // Offset
             // 

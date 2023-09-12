@@ -7,36 +7,38 @@ namespace ProcessExplorer.components.impl
 {
     class OptionalPeHeader32 : SuperHeader
     {
-        public OptionalPeHeader32(ProcessHandler processHandler, int startingPoint) : base(processHandler, ProcessHandler.ProcessComponent.OPITIONAL_PE_HEADER_32, 22, 3, true)
+        public OptionalPeHeader32(ProcessHandler processHandler, int startingPoint) : base(processHandler, ProcessHandler.ProcessComponent.OPITIONAL_PE_HEADER_32, 22, 3)
         {
-            string[,] sizeAndDesc = new string[22, 2];
-            sizeAndDesc[0, 0] = "4"; sizeAndDesc[0, 1] = "BaseOfData (4 bytes) points to starting relative virtual address of the .data section";
-            sizeAndDesc[1, 0] = "4"; sizeAndDesc[1, 1] = "ImageBase (8 bytes) prefered base address when loaded.";
-            sizeAndDesc[2, 0] = "4"; sizeAndDesc[2, 1] = "SectionAlignment (4 bytes) memory section size (padding will be added if needed).";
-            sizeAndDesc[3, 0] = "4"; sizeAndDesc[3, 1] = "FileAlignment (4 bytes) disk section size (padding will be added if needed).";
-            sizeAndDesc[4, 0] = "2"; sizeAndDesc[4, 1] = "MajorOperatingSystemVersion (2 bytes) earliest windows os this file can run on.";
-            sizeAndDesc[5, 0] = "2"; sizeAndDesc[5, 1] = "MinorOperatingSystemVersion (2 bytes) ^ <click for more details>";
-            sizeAndDesc[6, 0] = "2"; sizeAndDesc[6, 1] = "MajorImageVersion (2 bytes) marjor version assicoated with this file.";
-            sizeAndDesc[7, 0] = "2"; sizeAndDesc[7, 1] = "MinorImageVersion (2 bytes) minor version assicoated with this file.";
-            sizeAndDesc[8, 0] = "2"; sizeAndDesc[8, 1] = "MajorSubsystemVersion (2 bytes) earliest windows os the gui can run on.";
-            sizeAndDesc[9, 0] = "2"; sizeAndDesc[9, 1] = "MinorSubsystemVersion (2 bytes) ^ <click for more details> ";
-            sizeAndDesc[10, 0] = "4"; sizeAndDesc[10, 1] = "Win32VersionValue (4 bytes) reserved, must be zero.";
-            sizeAndDesc[11, 0] = "4"; sizeAndDesc[11, 1] = "SizeOfImage (4 bytes) size of entire file when loaded into memory (multiple of SectionAlignment).";
-            sizeAndDesc[12, 0] = "4"; sizeAndDesc[12, 1] = "SizeOfHeaders (4 bytes) size of all the headers rounded up to a multiple of FileAlignment.";
-            sizeAndDesc[13, 0] = "4"; sizeAndDesc[13, 1] = "CheckSum (4 bytes) integrity check, 0 means its modified or this was never done when compiling.";
-            sizeAndDesc[14, 0] = "2"; sizeAndDesc[14, 1] = "Subsystem (2 bytes) required sub system to be able to run this <click for more details>.";
-            sizeAndDesc[15, 0] = "2"; sizeAndDesc[15, 1] = "DllCharacteristics (2 bytes) dll characteristics <click for more details>.";
-            sizeAndDesc[16, 0] = "4"; sizeAndDesc[16, 1] = "SizeOfStackReserve (8 bytes) amount of virtual stack memory reserved on startup (max stack size).";
-            sizeAndDesc[17, 0] = "4"; sizeAndDesc[17, 1] = "SizeOfStackCommit (8 bytes) amount of initially commited physical memory for the stack.";
-            sizeAndDesc[18, 0] = "4"; sizeAndDesc[18, 1] = "SizeOfHeapReserve (8 bytes) amount of virtual heap memory reserved on startup (max heap size).";
-            sizeAndDesc[19, 0] = "4"; sizeAndDesc[19, 1] = "SizeOfHeapCommit (8 bytes) amount of initially commited physical memory for the heap.";
-            sizeAndDesc[20, 0] = "4"; sizeAndDesc[20, 1] = "LoaderFlags (4 bytes) Reserved, must be zero.";
-            sizeAndDesc[21, 0] = "4"; sizeAndDesc[21, 1] = "NumberOfRvaAndSizes (4 bytes) specifies how many entires our data directory contains.";
+            StartPoint = startingPoint;
 
-            StartPoint = startingPoint; // Must set the start point before populating the arrays
-            populateArrays(sizeAndDesc);
+            Desc = new string[RowSize];
+            Size = new int[RowSize];
+            Size[0] = 4; Desc[0] = "BaseOfData (4 bytes) points to starting relative virtual address of the .data section";
+            Size[1] = 4; Desc[1] = "ImageBase (4 bytes) prefered base address when loaded.";
+            Size[2] = 4; Desc[2] = "SectionAlignment (4 bytes) memory section size (padding will be added if needed).";
+            Size[3] = 4; Desc[3] = "FileAlignment (4 bytes) disk section size (padding will be added if needed).";
+            Size[4] = 2; Desc[4] = "MajorOperatingSystemVersion (2 bytes) earliest windows os this file can run on.";
+            Size[5] = 2; Desc[5] = "MinorOperatingSystemVersion (2 bytes) ^ <click for more details>";
+            Size[6] = 2; Desc[6] = "MajorImageVersion (2 bytes) marjor version assicoated with this file.";
+            Size[7] = 2; Desc[7] = "MinorImageVersion (2 bytes) minor version assicoated with this file.";
+            Size[8] = 2; Desc[8] = "MajorSubsystemVersion (2 bytes) earliest windows os the gui can run on.";
+            Size[9] = 2; Desc[9] = "MinorSubsystemVersion (2 bytes) ^ <click for more details> ";
+            Size[10] = 4; Desc[10] = "Win32VersionValue (4 bytes) reserved, must be zero.";
+            Size[11] = 4; Desc[11] = "SizeOfImage (4 bytes) size of entire file when loaded into memory (multiple of SectionAlignment).";
+            Size[12] = 4; Desc[12] = "SizeOfHeaders (4 bytes) size of all the headers rounded up to a multiple of FileAlignment.";
+            Size[13] = 4; Desc[13] = "CheckSum (4 bytes) integrity check, 0 means its modified or this was never done when compiling.";
+            Size[14] = 2; Desc[14] = "Subsystem (2 bytes) required sub system to be able to run this <click for more details>.";
+            Size[15] = 2; Desc[15] = "DllCharacteristics (2 bytes) dll characteristics <click for more details>.";
+            Size[16] = 4; Desc[16] = "SizeOfStackReserve (4 bytes) amount of virtual stack memory reserved on startup (max stack size).";
+            Size[17] = 4; Desc[17] = "SizeOfStackCommit (4 bytes) amount of initially commited physical memory for the stack.";
+            Size[18] = 4; Desc[18] = "SizeOfHeapReserve (4 bytes) amount of virtual heap memory reserved on startup (max heap size).";
+            Size[19] = 4; Desc[19] = "SizeOfHeapCommit (4 bytes) amount of initially commited physical memory for the heap.";
+            Size[20] = 4; Desc[20] = "LoaderFlags (4 bytes) Reserved, must be zero.";
+            Size[21] = 4; Desc[21] = "NumberOfRvaAndSizes (4 bytes) specifies how many entires our data directory contains.";
 
-            characteristics = new Dictionary<int, string> {
+            SetEndPoint();
+
+            Characteristics = new Dictionary<int, string> {
                 { 0x0001, "IMAGE_DLLCHARACTERISTICS_HIGH_ENTROPY_VA" },
                 { 0x0002, "IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE" },
                 { 0x0004, "IMAGE_DLLCHARACTERISTICS_FORCE_INTEGRITY" },
@@ -59,7 +61,7 @@ namespace ProcessExplorer.components.impl
                 "0x00100005 - Windows XP", "0x00200005 - Windows XP x64", "0x00000006 - Windows Vista", "0x00100006 - Windows 7", "0x00200006 - Windows 8",
                     "0x00300006 - Windows 8.1", "0x00000010  - Windows 10" };
 
-                string combinedHex = OptionsForm.GetBigEndianValue(hexArray[row - 1, 1] + " " + hexArray[row, 1]);
+                /*string combinedHex = OptionsForm.GetBigEndianValue(hexArray[row - 1, 1] + " " + hexArray[row, 1]);
                 Console.WriteLine("CombinedHexBigEndian:" + combinedHex + " LittleEndian:" + (hexArray[row - 1, 1] + " " + hexArray[row, 1]));
 
                 using (OptionsForm optionsForm = new OptionsForm(this, combinedHex, "Minimum Operating System Version", row, options, null, null))
@@ -70,7 +72,7 @@ namespace ProcessExplorer.components.impl
                         Console.WriteLine("Open custom Options box");
 
                     }
-                }
+                }*/
             }
             else if (row == 9)
             {
@@ -78,7 +80,7 @@ namespace ProcessExplorer.components.impl
                 "0x00100005 - Windows XP", "0x00200005 - Windows XP x64", "0x00000006 - Windows Vista", "0x00100006 - Windows 7", "0x00200006 - Windows 8",
                     "0x00300006 - Windows 8.1", "0x00000010  - Windows 10" };
 
-                string combinedHex = OptionsForm.GetBigEndianValue(hexArray[row - 1, 1] + " " + hexArray[row, 1]);
+                /*string combinedHex = OptionsForm.GetBigEndianValue(hexArray[row - 1, 1] + " " + hexArray[row, 1]);
                 Console.WriteLine("CombinedHexBigEndian:" + combinedHex + " LittleEndian:" + (hexArray[row - 1, 1] + " " + hexArray[row, 1]));
 
                 using (OptionsForm optionsForm = new OptionsForm(this, combinedHex, "Minimum Subsystem Version", row, options, null, null))
@@ -89,7 +91,7 @@ namespace ProcessExplorer.components.impl
                         Console.WriteLine("Open custom Options box");
 
                     }
-                }
+                }*/
             }
             else if (row == 14)
             {
@@ -108,9 +110,9 @@ namespace ProcessExplorer.components.impl
                     }
                 }
             }
-            else if (row == 15 && characteristics != null)
+            else if (row == 15 && Characteristics != null)
             {
-                string[] combinedStrings = characteristics.Select(kv => $"{"0x" + (kv.Key).ToString("X")} - {kv.Value}").ToArray();
+                string[] combinedStrings = Characteristics.Select(kv => $"{"0x" + (kv.Key).ToString("X")} - {kv.Value}").ToArray();
 
                 using (OptionsForm optionsForm = new OptionsForm(this, null, "DLL Characteristics", row, null, combinedStrings, null))
                 {

@@ -5,12 +5,11 @@ namespace ProcessExplorer.components.impl
     {
 
         public SectionBody(ProcessHandler processHandler, int startingPoint, int endPoint, ProcessHandler.ProcessComponent sectionType) 
-            : base(processHandler, ProcessHandler.ProcessComponent.SECTION_BODY, 1, 3, false)
+            : base(processHandler, ProcessHandler.ProcessComponent.SECTION_BODY, 1, 3)
         {
             Component = sectionType;
             StartPoint = startingPoint;
             EndPoint = endPoint;
-            PopulateNonDescArrays();
         }
 
         public override void OpenForm(int row)

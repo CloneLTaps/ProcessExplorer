@@ -13,6 +13,8 @@ namespace ProcessExplorer
         public string FileName { get; private set; }
 
         public bool RemoveZeros { get; set; }
+
+        public bool TreatNullAsPeriod { get; set; }
         public bool OffsetsInHex { get; set; }
 
         public bool ReterunToTop { get; set; }
@@ -27,6 +29,10 @@ namespace ProcessExplorer
         public readonly Dictionary<ProcessComponent, SuperHeader> componentMap = new Dictionary<ProcessComponent, SuperHeader>();
         private readonly FileStream file;
 
+        public string[,] FilesHex { get; private set; }
+        public string[,] FilesDecimal { get; private set; }
+        public string[,] FilesBinary { get; private set; }
+
         /* This prevents us from getting an error if the map does not contain a specific ProcessComponent */
         public SuperHeader GetComponentFromMap(ProcessComponent comp)
         {
@@ -37,7 +43,7 @@ namespace ProcessExplorer
         public void RecalculateHeaders(SuperHeader comp)
         {
             if (comp.Component == ProcessComponent.DOS_HEADER) componentMap[ProcessComponent.DOS_HEADER] = new DosHeader(this);
-            else if (comp.Component == ProcessComponent.DOS_STUB) componentMap[ProcessComponent.DOS_STUB] = new DosStub(this);
+            else if (comp.Component == ProcessComponent.DOS_STUB) componentMap[ProcessComponent.DOS_STUB] = new DosStub(this, GetComponentFromMap(ProcessComponent.DOS_HEADER).EndPoint);
             else if (comp.Component == ProcessComponent.PE_HEADER) componentMap[ProcessComponent.PE_HEADER] = new PeHeader(this, GetComponentFromMap(ProcessComponent.DOS_STUB).EndPoint);
             else if (comp.Component == ProcessComponent.OPITIONAL_PE_HEADER) componentMap[ProcessComponent.OPITIONAL_PE_HEADER] = new OptionalPeHeader(this, GetComponentFromMap(ProcessComponent.PE_HEADER).EndPoint);
             else if (comp.Component == ProcessComponent.OPITIONAL_PE_HEADER_64) componentMap[ProcessComponent.OPITIONAL_PE_HEADER_64] = new OptionalPeHeader64(this, GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER).EndPoint);
@@ -57,7 +63,7 @@ namespace ProcessExplorer
             }
             else
             {
-                AssignSectionHeaders(GetComponentFromMap(ProcessComponent.EVERYTHING).hexArray, HeaderEndPoint);
+                AssignSectionHeaders(HeaderEndPoint);
             }
         }
 
@@ -76,15 +82,21 @@ namespace ProcessExplorer
             string[,] filesBinary = new string[(int)Math.Ceiling(file.Length / 16.0), 2];
 
             PopulateArrays(filesHex, filesDecimal, filesBinary); // Passes a reference to the memory address of the above arrays instead of their values
+            FilesHex = filesHex;
+            FilesDecimal = filesDecimal;
+            FilesBinary = filesBinary;
 
-            componentMap.Add(ProcessComponent.EVERYTHING, new Everything(this, filesHex, filesDecimal, filesBinary));
+            Console.WriteLine("HexLength:" + FilesHex.GetLength(0) + " DecimalLength:" + FilesDecimal.GetLength(0));
+
+            componentMap.Add(ProcessComponent.EVERYTHING, new Everything(this, filesHex.GetLength(0)));
             if (GetComponentFromMap(ProcessComponent.EVERYTHING).EndPoint <= 2) return;            // The file is esentially blank  
 
             componentMap.Add(ProcessComponent.DOS_HEADER, new DosHeader(this));
             if (GetComponentFromMap(ProcessComponent.DOS_HEADER).FailedToInitlize) return;         // This means this is not a PE
 
-            componentMap.Add(ProcessComponent.DOS_STUB, new DosStub(this));                 // This means our PE does not contain a dos stub which is not normal
+            componentMap.Add(ProcessComponent.DOS_STUB, new DosStub(this, GetComponentFromMap(ProcessComponent.DOS_HEADER).EndPoint));  // This means our PE does not contain a dos stub which is not normal
             if (GetComponentFromMap(ProcessComponent.DOS_STUB).FailedToInitlize) return;
+
             // Possible To:Do look into finding a PE that uses RichHeaders since those can sometimes appear before the PE Header
             componentMap.Add(ProcessComponent.PE_HEADER, new PeHeader(this, GetComponentFromMap(ProcessComponent.DOS_STUB).EndPoint));
             if (GetComponentFromMap(ProcessComponent.PE_HEADER).FailedToInitlize) return;          // This means our PE Header is either too short or does not contain the signature
@@ -94,6 +106,7 @@ namespace ProcessExplorer
             int endPoint;
             if (((OptionalPeHeader)GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER)).validHeader)
             { // This means we most likely have either 64 or 32 bit option headers
+                Console.WriteLine("Valid header!");
                 if (((OptionalPeHeader)GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER)).peThirtyTwoPlus)
                 {   // This means our optional header is valid and that we are using 64 bit headers
                     componentMap.Add(ProcessComponent.OPITIONAL_PE_HEADER_64, new OptionalPeHeader64(this, GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER).EndPoint));
@@ -113,21 +126,21 @@ namespace ProcessExplorer
                 endPoint = GetComponentFromMap(ProcessComponent.PE_HEADER).EndPoint;
             }
             HeaderEndPoint = endPoint;
-
+            Console.WriteLine("Start Sections HeaderEndPoint:" + HeaderEndPoint);
             // Recursively adds sections
-            AssignSectionHeaders(filesHex, endPoint);
+            AssignSectionHeaders(endPoint);
         }
 
         /* This will return the new end point and it will return -1 if we reached the last section */
-        private void AssignSectionHeaders(string[,] filesHex, int startPoint)
+        private void AssignSectionHeaders(int startPoint)
         {
             int initialSkipAmount = startPoint % 16; // The amount we need to skip before we reach our target byte 
             int startingIndex = startPoint <= 0 ? 0 : (int)Math.Floor(startPoint / 16.0);
             string ascii = ""; // Section name
             int totalCount = 0;
-            for (int row = startingIndex; row < filesHex.GetLength(0); row++) // Loop through the rows
+            for (int row = startingIndex; row < FilesHex.GetLength(0); row++) // Loop through the rows
             {
-                string[] hexBytes = filesHex[row, 1].Split(' ');
+                string[] hexBytes = FilesHex[row, 1].Split(' ');
 
                 for (int j = initialSkipAmount; j < hexBytes.Length; j++) // Loop through each rows bytes
                 {
@@ -136,12 +149,16 @@ namespace ProcessExplorer
                         char asciiChar = b >= 32 && b <= 126 ? (char)b : '.';
                         ascii += asciiChar;
 
+                        Console.WriteLine("Ascii:" + ascii + " Count:" + totalCount + " SkipAmount:" + initialSkipAmount + " StartingIndex:" + startingIndex);
+
                         if (totalCount++ > 8) return; // If we dont find it then we must of found all of the section headers
 
-                        if (GetProcessComponent(ascii + " section header") != ProcessComponent.NULL_COMPONENT)
+                        ProcessComponent sectionType = GetProcessComponent(ascii + " section header");
+                        Console.WriteLine("ProcessComponent:" + sectionType.ToString());
+                        if (sectionType != ProcessComponent.NULL_COMPONENT)
                         {
-                            ProcessComponent sectionType = GetProcessComponent(ascii + " section header");
                             ProcessComponent sectionBodyType = GetProcessComponent(ascii + " section body");
+                            Console.WriteLine("SectionBodyType:" + sectionBodyType.ToString());
                             SectionHeader header = new SectionHeader(this, startPoint, sectionType);
                             SectionBody body = new SectionBody(this, header.bodyStartPoint, header.bodyEndPoint, sectionBodyType);
 
@@ -151,7 +168,7 @@ namespace ProcessExplorer
                             if(componentMap.ContainsKey(sectionBodyType)) componentMap[sectionBodyType] = body;
                             else componentMap.Add(sectionBodyType, body);
 
-                            AssignSectionHeaders(filesHex, header.EndPoint);
+                            AssignSectionHeaders(header.EndPoint);
                             return;
                         }
                     }
@@ -161,49 +178,6 @@ namespace ProcessExplorer
             return;
         }
 
-        public int GetComponentsRowIndexCount(ProcessComponent component)
-        {
-            SuperHeader header = GetComponentFromMap(component);
-            if (header == null) return 0;
-            return header.hexArray.GetLength(0) - 1;
-        }
-
-        public int GetComponentsColumnIndexCount(ProcessComponent component)
-        {
-            SuperHeader header = GetComponentFromMap(component);
-            if (header == null) return 0;
-            return header.hexArray.GetLength(1) - 1;
-        }
-
-
-        /* Returns data that will fill up the DataDisplayView */
-        public string GetValue(int row, int column, bool doubleByte, ProcessComponent component, DataType type)
-        {
-            SuperHeader header = GetComponentFromMap(component);
-            if (header == null) return "";
-
-            switch(type)
-            {
-                case DataType.HEX: return header.GetHex(row, column, doubleByte);
-                case DataType.DECIMAL: 
-                    if(column == 2) return header.GetHex(row, 2, doubleByte);
-                    return header.GetDecimal(row, column, doubleByte);
-                case DataType.BINARY:
-                    if (column == 2) return header.GetHex(row, 2, doubleByte);
-                    return header.GetBinary(row, column, doubleByte);
-            }
-            return "";
-        }
-         
-        public void OpenDescrptionForm(ProcessComponent component, int row)
-        {
-            SuperHeader header = GetComponentFromMap(component);
-            if(header != null) header.OpenForm(row);
-        }
-
-
-
-        /* This will populate all our arrays  */
         private void PopulateArrays(string[,] filesHex, string[,] filesDecimal, string[,] filesBinary)
         {
             try
@@ -248,14 +222,43 @@ namespace ProcessExplorer
             }
         }
 
+        public int GetComponentsRowIndexCount(ProcessComponent component)
+        {
+            SuperHeader header = GetComponentFromMap(component);
+            if (header == null) return 0;
+            return header.GetFilesRows() - 1;
+        }
+
+        public int GetComponentsColumnIndexCount(ProcessComponent component)
+        {
+            SuperHeader header = GetComponentFromMap(component);
+            if (header == null) return 0;
+            return header.GetFilesColumns() - 1;
+        }
+
+
+        /* Returns data that will fill up the DataDisplayView */
+        public string GetValue(int row, int column, bool doubleByte, ProcessComponent component, DataType type)
+        {
+            SuperHeader header = GetComponentFromMap(component);
+            if (header == null) return "";
+            return header.GetData(row, column, type, doubleByte, Offset == OffsetType.FILE_OFFSET);
+        }
+         
+        public void OpenDescrptionForm(ProcessComponent component, int row)
+        {
+            SuperHeader header = GetComponentFromMap(component);
+            if(header != null) header.OpenForm(row);
+        }
+
         public void SaveFile(string outputPath)
         {
-            int length = GetComponentFromMap(ProcessComponent.EVERYTHING).hexArray.GetLength(0);
+            int length = GetComponentFromMap(ProcessComponent.EVERYTHING).GetFilesRows();
             string[] hexDataArray = new string[length];
 
             for (int row = 0; row < length; row++)
             {
-                hexDataArray[row] = GetComponentFromMap(ProcessComponent.EVERYTHING).hexArray[row, 1];
+                hexDataArray[row] = FilesHex[row, 1];
             }
 
             try

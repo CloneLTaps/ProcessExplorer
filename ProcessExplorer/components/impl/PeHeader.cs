@@ -8,8 +8,9 @@ namespace ProcessExplorer.components
 {
     class PeHeader : SuperHeader
     {
-        public PeHeader(ProcessHandler processHandler, int startingPoint) : base(processHandler, ProcessHandler.ProcessComponent.PE_HEADER, 8, 3, true)
+        public PeHeader(ProcessHandler processHandler, int startingPoint) : base(processHandler, ProcessHandler.ProcessComponent.PE_HEADER, 8, 3)
         {
+            Console.WriteLine("PeHeader Start 1");
             if(processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.EVERYTHING).EndPoint <= 
                 processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.DOS_STUB).EndPoint + 24)
             {   // This means this file will not contain the nessary PE Header fields thus making this invalid
@@ -17,31 +18,42 @@ namespace ProcessExplorer.components
                 return;
             }
 
-            string[,] sizeAndDesc = new string[8, 2];
-            sizeAndDesc[0, 0] = "4"; sizeAndDesc[0, 1] = "Signature (4 bytes) \"PE\0\0\" denotes start of the PE.";
-            sizeAndDesc[1, 0] = "2"; sizeAndDesc[1, 1] = "Machine (2 bytes) taget machines architecture <click for more details>.";
-            sizeAndDesc[2, 0] = "2"; sizeAndDesc[2, 1] = "NumberOfSections (2 bytes) total number of sections.";
-            sizeAndDesc[3, 0] = "4"; sizeAndDesc[3, 1] = "TimeDateStamp (4 bytes) <click for more details>.";
-            sizeAndDesc[4, 0] = "4"; sizeAndDesc[4, 1] = "PointerToSymbolTable (4 bytes) present in .obj files but not in final build.";
-            sizeAndDesc[5, 0] = "4"; sizeAndDesc[5, 1] = "NumberOfSymbols (4 bytes) ^ examples of symbols are function and variable names.";
-            sizeAndDesc[6, 0] = "2"; sizeAndDesc[6, 1] = "SizeOfOptionalHeader (2 bytes) size of the optional header which precedes this.";
-            sizeAndDesc[7, 0] = "2"; sizeAndDesc[7, 1] = "Characteristics (2 bytes) target architecture <click for more details>.";
+            StartPoint = startingPoint;
 
-            StartPoint = startingPoint; // Must set the start point before populating the arrays
-            populateArrays(sizeAndDesc);
+            Console.WriteLine("PeHeader Start 2 startPoint:" + startingPoint);
 
-            string[] signatureHex = hexArray[0, 1].Split(" ");
-            if(signatureHex[0] != "50" || signatureHex[1] != "45" && signatureHex[2] != "00" || signatureHex[3] != "00")
+            Desc = new string[RowSize];
+            Size = new int[RowSize];
+            Size[0] = 4; Desc[0] = "Signature (4 bytes) \"PE\0\0\" denotes start of the PE.";
+            Size[1] = 2; Desc[1] = "Machine (2 bytes) taget machines architecture <click for more details>.";
+            Size[2] = 2; Desc[2] = "NumberOfSections (2 bytes) total number of sections.";
+            Size[3] = 4; Desc[3] = "TimeDateStamp (4 bytes) <click for more details>.";
+            Size[4] = 4; Desc[4] = "PointerToSymbolTable (4 bytes) present in .obj files but not in final build.";
+            Size[5] = 4; Desc[5] = "NumberOfSymbols (4 bytes) ^ examples of symbols are function and variable names.";
+            Size[6] = 2; Desc[6] = "SizeOfOptionalHeader (2 bytes) size of the optional header which precedes this.";
+            Size[7] = 2; Desc[7] = "Characteristics (2 bytes) target architecture <click for more details>.";
+
+            SetEndPoint();
+
+            Console.WriteLine("PeHeader Start 3 EndPoint:" + EndPoint);
+
+            string[] signatureHex = GetData(0, 1, ProcessHandler.DataType.HEX, false, true).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            Console.WriteLine("PeHeader Start 4: " + string.Join(" ", signatureHex) );
+            if (signatureHex[0] != "50" || signatureHex[1] != "45" && signatureHex[2] != "00" || signatureHex[3] != "00")
             {   // This means this is not a valid PE since the header signature was incorrect
                 FailedToInitlize = true; 
                 return;
             }
 
-            int bit = int.Parse(OptionsForm.GetBigEndianValue(hexArray[1, 1]), NumberStyles.HexNumber);
+            int bit = int.Parse(OptionsForm.GetBigEndianValue(GetData(1, 1, ProcessHandler.DataType.HEX, false, true)), NumberStyles.HexNumber);
             processHandler.Is64Bit = bit == 0x8664;
 
+            Console.WriteLine("PeHeader StartPoint:" + StartPoint + " EndPoint:" + EndPoint + " bit:" + bit + " NormalBigEndian:" 
+                + GetData(1, 1, ProcessHandler.DataType.HEX, true, true)
+                + " OptionsBigEndian:" + OptionsForm.GetBigEndianValue(GetData(1, 1, ProcessHandler.DataType.HEX, false, true)) + " 64Bit:" + processHandler.Is64Bit);
+
             // None of our headers have more than 1 characteristic type structure 
-            characteristics = new Dictionary<int, string> {
+            Characteristics = new Dictionary<int, string> {
                 { 0x0001, "IMAGE_FILE_RELOCS_STRIPPED" },
                 { 0x0002, "IMAGE_FILE_EXECUTABLE_IMAGE" },
                 { 0x0004, "IMAGE_FILE_LINE_NUMS_STRIPPED" },
@@ -90,8 +102,9 @@ namespace ProcessExplorer.components
             }
             else if(row == 3)
             {
-                string hexValue = OptionsForm.GetBigEndianValue(hexArray[row, 1]);
-                uint unixTimestamp = uint.Parse(hexValue, System.Globalization.NumberStyles.HexNumber);
+                string hexValue = OptionsForm.GetBigEndianValue(GetData(row, 1, ProcessHandler.DataType.HEX, false, false));
+                uint unixTimestamp = uint.Parse(hexValue, NumberStyles.HexNumber);
+                Console.WriteLine("OptionsHex:" + hexValue + " NormalHex:" + GetData(row, 1, ProcessHandler.DataType.HEX, true, false));
 
                 DateTime unixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
                 DateTime dateTime = unixEpoch.AddSeconds(unixTimestamp);
@@ -106,17 +119,19 @@ namespace ProcessExplorer.components
                     }
                 }
             }
-            else if(row == 7 && characteristics != null)
+            else if(row == 7 && Characteristics != null)
             {
-                string[] combinedStrings = characteristics.Select(kv => $"{"0x" + (kv.Key).ToString("X")} - {kv.Value}").ToArray();
+                string[] combinedStrings = Characteristics.Select(kv => $"{"0x" + (kv.Key).ToString("X")} - {kv.Value}").ToArray();
 
                 using (OptionsForm optionsForm = new OptionsForm(this, null, "Characteristics", row, null, combinedStrings, null))
                 {
                     DialogResult result = optionsForm.ShowDialog();
                     if (result == DialogResult.OK)
                     {
+                        string updatedCharacteristic = optionsForm.GetUpdatedCharacterisitcs();
                         Console.WriteLine("Open custom Options box");
-        
+                        Console.WriteLine("Updated hexString:" + optionsForm.GetUpdatedCharacterisitcs());
+
                     }
                 }
             }

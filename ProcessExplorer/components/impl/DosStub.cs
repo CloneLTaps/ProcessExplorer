@@ -4,26 +4,50 @@ namespace ProcessExplorer.components
 {
     class DosStub : SuperHeader
     {
-        public DosStub(ProcessHandler processHandler) : base(processHandler, ProcessHandler.ProcessComponent.DOS_STUB, 1, 3, false)
+        public DosStub(ProcessHandler processHandler, int startPoint) : base(processHandler, ProcessHandler.ProcessComponent.DOS_STUB, 1, 3) 
         {
             Console.WriteLine("Start DosStub");
             if (processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.EVERYTHING).EndPoint 
-                <= processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.DOS_HEADER).EndPoint) // abcdefghijklmnop _MouseHandlerInf
+                <= processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.DOS_HEADER).EndPoint) 
             {   // This means our PE only consits of a PE Header 
                 FailedToInitlize = true;
                 return;
             }
-            Console.WriteLine("Start DosStub p2");
+            Console.WriteLine("Start DosStub p2 StartPoint:" + startPoint);
 
-            SuperHeader dosHeader = processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.DOS_HEADER);
-            StartPoint = dosHeader.EndPoint;
-            string littleEndianHex = dosHeader.hexArray[dosHeader.RowSize - 1, 1];
-            string[] hexBytes = littleEndianHex.Split(' ');
-            Array.Reverse(hexBytes); // Reverse the order of bytes
-            string hexEndPoint = string.Concat(hexBytes);
+            StartPoint = startPoint;
+            Size = null;
+            Desc = null;
 
-            EndPoint = Convert.ToInt32(hexEndPoint.Replace("0x", ""), 16); 
-            PopulateNonDescArrays();
+            int startingPoint = (int)Math.Floor(StartPoint / 16.0);
+            for (int row = startingPoint; row < GetFilesRows(); row++)
+            {
+                string[] hexArray = GetFilesHex(row, 1).Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+                int offset = StartPoint;
+                string signature = "";
+                for (int i = 0; i < hexArray.Length; i++)
+                {
+                    string str = hexArray[i];
+                    int rowSize = row - startingPoint;
+                    
+                    if (str == "50")
+                    {
+                        offset = (row + i) * 16;
+                        signature = "50";
+                    }
+                    else signature += str;
+
+                    if(signature == "50450000")
+                    {
+                        EndPoint = offset;
+                        RowSize = rowSize;
+                        return;
+                    }
+                }
+            }
+            Console.WriteLine("DosStub FAILED TO FIND END \n");
+            FailedToInitlize = true;
         }
 
         public override void OpenForm(int row)
