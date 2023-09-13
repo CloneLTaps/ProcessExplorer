@@ -6,13 +6,11 @@ namespace ProcessExplorer.components
         public DosHeader(ProcessHandler processHandler) : base(processHandler, ProcessHandler.ProcessComponent.DOS_HEADER, 19, 3)
         {
             string[] firstHexLine = GetFilesHex(0, 1).Split(' ');
-            Console.WriteLine("Starting DosHeader");
             if (firstHexLine[0].ToLower() != "4d" || firstHexLine[1].ToLower() != "5a")
             {   // This means this file is not a PE
                 FailedToInitlize = true;
                 return;
             }
-            Console.WriteLine("Starting DosHeader p2");
 
             StartPoint = 0;
 
@@ -39,8 +37,6 @@ namespace ProcessExplorer.components
             Size[18] = 4; Desc[18] = "e_lfanew: (4 bytes) offset to the start of the PE Header.";
             
             SetEndPoint();
-
-            Console.WriteLine("Starting DosHeader p3 StartPoint:" + StartPoint + " EndPoint:" + EndPoint);
         }
 
         public override void OpenForm(int row)

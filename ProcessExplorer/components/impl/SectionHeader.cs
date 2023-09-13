@@ -12,8 +12,6 @@ namespace ProcessExplorer.components.impl
             StartPoint = startingPoint;
             Component = sectionType;
 
-            Console.WriteLine("StartPoint:" + StartPoint + " Component:" + Component.ToString() + " ");
-
             Desc = new string[RowSize];
             Size = new int[RowSize];
             Size[0] = 8; Desc[0] = "Name (8 bytes) name of this section.";
@@ -29,12 +27,8 @@ namespace ProcessExplorer.components.impl
 
             SetEndPoint();
 
-            Console.WriteLine("Section Header 1 " + sectionType.ToString() + " StartPoint:" + StartPoint + " EndPoint:" + EndPoint);
-
             bodyStartPoint = Convert.ToInt32(OptionsForm.GetBigEndianValue(GetData(4, 1, ProcessHandler.DataType.HEX, false, true)), 16);
-            Console.WriteLine("Section Header 2 " + sectionType.ToString() + " StartPoint:" + StartPoint + " EndPoint:" + EndPoint + " BodyStartPoint:" + bodyStartPoint);
             bodyEndPoint = Convert.ToInt32(OptionsForm.GetBigEndianValue(GetData(3, 1, ProcessHandler.DataType.HEX, false, true)), 16) + bodyStartPoint;
-            Console.WriteLine("Section Header 3 " + sectionType.ToString() + " StartPoint:" + StartPoint + " EndPoint:" + EndPoint + " BodyEndPoint:" + bodyEndPoint);
         }
 
         public override void OpenForm(int row)

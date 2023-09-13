@@ -31,8 +31,6 @@ namespace ProcessExplorer.components.impl
             int magicBit = int.Parse(hex, NumberStyles.HexNumber);
             if (magicBit == 0x10B || magicBit == 0x20B) validHeader = true;
             peThirtyTwoPlus = (magicBit == 0x20B);
-            Console.WriteLine("OptionalHeader MagicBit:" + magicBit + " ValidHeader:" + validHeader + " ThirtyTwoPlus:" + peThirtyTwoPlus + " hex: " + hex 
-                + " EndPoint:" + EndPoint);
         }
 
         public override void OpenForm(int row)

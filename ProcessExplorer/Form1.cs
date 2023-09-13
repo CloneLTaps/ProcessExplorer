@@ -396,23 +396,6 @@ namespace ProcessExplorer
             }
         }
 
-        private void UpdateASCII(string hexString, int row)
-        {
-            string[] hexBytes = hexString.Split(' '); // Split by spaces
-
-            string asciiString = "";
-            foreach (string hexByte in hexBytes)
-            {
-                if (byte.TryParse(hexByte, System.Globalization.NumberStyles.HexNumber, null, out byte asciiByte))
-                {
-                    if (asciiByte >= 32 && asciiByte <= 128) asciiString += (char)asciiByte;
-                    else asciiString += ".";
-                }
-                else asciiString += ".";
-            }
-            processHandler.FilesHex[row, 2] = asciiString;
-        }
-
         private void ReplaceButton_Click(object sender, EventArgs e)
         {
             string search = searchTextBox.Text;
@@ -420,7 +403,6 @@ namespace ProcessExplorer
             replaceButton.Checked = false;
 
             if (search == "" || replace == "" || selectedComponent == ProcessHandler.ProcessComponent.NULL_COMPONENT) return;
-            Console.WriteLine("SearchTextBox:" + searchTextBox.Text + " ReplaceAllCheckBox:" + replaceWithTextBox.Text);
             bool replaceAll = false;
 
             if (replaceAllCheckBox.Control is CheckBox checkBox)
@@ -430,7 +412,7 @@ namespace ProcessExplorer
 
             SuperHeader header = replaceAll ? processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.EVERYTHING) : processHandler.GetComponentFromMap(selectedComponent);
             int firstRow = (int)Math.Floor(header.StartPoint / 16.0);
-            Console.WriteLine("ReplaceAll:" + replaceAll + " HeaderType:" + header.GetType().Name + " FirstRow:" + firstRow);
+
             int count = 0;
             for (int row = firstRow; row < header.RowSize; row++)
             {   // This will loop through every row in our selected component
@@ -445,17 +427,15 @@ namespace ProcessExplorer
                         if (asciiByte >= 32 && asciiByte <= 128)
                         {
                             asciiString += (char)asciiByte;
-                           // Console.WriteLine("AsciiString: " + asciiString + " AsciiByte:" + asciiByte + " Search:" + search);
+
                             if (search == asciiString)
                             {   // This means we reached a target string that we need to replace
                                 string originalRow = processHandler.FilesHex[row, 1];
-                                string[,] values = GetValueVariations(originalRow.Replace(GetHexFromAscii(search), GetHexFromAscii(replace)), true); // This is always in hex
-                                Console.WriteLine("SearchAscii:" + GetHexFromAscii(search) + " ReplaceAscii:" + GetHexFromAscii(replace));
-                                Console.WriteLine("Original:" + string.Join(" ", originalRow) + "   Value:" + string.Join(" ", values[0, 0]));
+                                string[,] values = processHandler.GetValueVariations(originalRow.Replace(GetHexFromAscii(search), GetHexFromAscii(replace)), true, decimalButton.Checked); // This is always in hex
                                 processHandler.FilesHex[row, 1] = values[0, 0];
                                 processHandler.FilesDecimal[row, 1] = values[0, 1];
                                 processHandler.FilesBinary[row, 1] = values[0, 2];
-                                UpdateASCII(values[0, 0], row);
+                                processHandler.UpdateASCII(values[0, 0], row);
                                 TriggerRedraw();
                                 ++count;
 
@@ -474,8 +454,6 @@ namespace ProcessExplorer
                     else asciiString = "";
                 }
             }
-            MessageBox.Show("Replaced \"" + search + "\" with " + "\"" + replace + "\" " + count.ToString() + " times!");
-            Console.WriteLine(" ");
         }
 
         private bool ParseAscii(string hexByte, out byte asciiByte)
@@ -508,29 +486,27 @@ namespace ProcessExplorer
             int row = e.RowIndex;
             string newValue = (string)e.Value;
 
-            if (processHandler.GetComponentFromMap(selectedComponent) == null || row >= processHandler.GetComponentFromMap(selectedComponent).RowSize || doubleByteButton.Checked) return;
-
-            int orignalLength = (processHandler.GetComponentFromMap(selectedComponent).GetData(row, 1, ProcessHandler.DataType.HEX, false, false).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)).Length;
-            string[,] values = GetValueVariations(newValue, false);
-            Console.WriteLine("EVERYTHING NewValue:" + newValue + " Row:" + e.RowIndex + " Column:" + e.ColumnIndex + " Component:" + selectedComponent.ToString());
-
-            int offset = int.Parse(processHandler.GetComponentFromMap(selectedComponent).GetData(row, 0, ProcessHandler.DataType.DECIMAL, false, false)); // This gets the file offset in decimal form
+            SuperHeader selectedHeader = processHandler.GetComponentFromMap(selectedComponent);
+            if (selectedHeader == null || row >= selectedHeader.RowSize || doubleByteButton.Checked) return;
+           
             if (selectedComponent == ProcessHandler.ProcessComponent.EVERYTHING)
             {   // if this is true then that means I need to update the other data source which first requies me to customize the data to the fit the structure
+                string[,] values = processHandler.GetValueVariations(newValue, hexButton.Checked, decimalButton.Checked);
+
+                int offset = int.Parse(selectedHeader.GetData(row, 0, ProcessHandler.DataType.DECIMAL, false, false)); // This gets the file offset in decimal form
+
                 processHandler.FilesHex[row, column] = values[0, 0];
                 processHandler.FilesDecimal[row, column] = values[0, 1];
                 processHandler.FilesBinary[row, column] = values[0, 2];
 
-                UpdateASCII(values[0, 0], row);
+                processHandler.UpdateASCII(values[0, 0], row);
 
                 foreach (var map in processHandler.componentMap)
                 {
                     SuperHeader comp = map.Value;
-                    Console.WriteLine("HEADER StartPoint:" + comp.StartPoint + " EndPoint:" + comp.EndPoint + " Offset:" + offset + " Type:" + comp.Component.ToString());
                     if (comp.Component != ProcessHandler.ProcessComponent.EVERYTHING && comp.StartPoint <= offset && comp.EndPoint >= offset)
                     {
                         processHandler.RecalculateHeaders(comp);
-                        Console.WriteLine("Update from Everything for Normal Header");
                         TriggerRedraw();
                         return;
                     }
@@ -538,105 +514,10 @@ namespace ProcessExplorer
             }
             else
             {   // else I need to update the data source inside everything
-                int everythingRow = (int)Math.Floor(offset / 16.0);
-                int everythingOffset = int.Parse(processHandler.FilesDecimal[everythingRow, 0]);
-                int dataByteLength = (processHandler.GetComponentFromMap(selectedComponent).GetData(row, 1, ProcessHandler.DataType.HEX, false, false).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)).Length;
-                int difference = offset - everythingOffset;
-                string[] hex = processHandler.FilesHex[everythingRow, column].Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries); // This ensures extra white space array indexes get removed
-
-                Console.WriteLine("EverythingRow:" + everythingRow + " EverythingOffset:" + everythingOffset + " Offset:" + offset + " ByteLength:" + dataByteLength +
-                    " Difference:" + difference + " CompsHex:" + processHandler.GetComponentFromMap(selectedComponent).GetData(row, 1, ProcessHandler.DataType.HEX, false, false));
-
-                Console.WriteLine("OTHER SOURCE NewValue:" + newValue + " Row:" + e.RowIndex + " Column:" + e.ColumnIndex);
-                Console.WriteLine("OriginalHex: " + string.Join(" ", hex));
-                processHandler.FilesHex[everythingRow, column] = ReplaceData(difference, dataByteLength,
-                    processHandler.FilesHex[everythingRow, column], values[0, 0], orignalLength, selectedComponent);
-                processHandler.FilesDecimal[everythingRow, column] = ReplaceData(difference, dataByteLength,
-                    processHandler.FilesDecimal[everythingRow, column], values[0, 1], orignalLength, selectedComponent);
-                processHandler.FilesBinary[everythingRow, column] = ReplaceData(difference, dataByteLength,
-                    processHandler.FilesBinary[everythingRow, column], values[0, 2], orignalLength, selectedComponent);
-                UpdateASCII(processHandler.FilesHex[everythingRow, 1], everythingRow);
-                Console.WriteLine("NewHex: " + processHandler.FilesHex[everythingRow, column]);
+                selectedHeader.UpdateData(row, newValue, hexButton.Checked, decimalButton.Checked);
                 TriggerRedraw();
             }
             Console.WriteLine(" ");
-        }
-
-        private string ReplaceData(int difference, int dataByteLength, string data, string replacment, int originalLength, ProcessHandler.ProcessComponent type)
-        {
-            string[] originalBytes = data.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            string[] replacementBytes = replacment.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-
-            if (type == ProcessHandler.ProcessComponent.DOS_STUB || type.ToString().Contains("SECTION_BODY"))
-            {   // This means I just need to replace the data instead of switching out a few bytes
-                Console.WriteLine("ReplacementLength:" + replacementBytes.Length + " originalLength:" + originalLength);
-                if(replacementBytes.Length < originalLength)
-                {   // This means the user is trying to reduce the data sections size for some reason
-                    return string.Join(" ", replacementBytes);
-                }
-
-                for(int i=0; i<replacementBytes.Length; i++)
-                {
-                    if (originalBytes.Length - 1 >= i) originalBytes[i] = replacementBytes[i];
-                }
-                return string.Join(" ", originalBytes);
-            }
-
-            if (difference >= 0 && dataByteLength > 0 && difference + (dataByteLength * 3) <= data.Length)
-            {
-                int byteLength = originalBytes.Length;
-                if (difference >= 0 && dataByteLength > 0 && difference + dataByteLength <= byteLength)
-                {
-                    // Calculate the start and end indexes of the section to replace
-                    int endIndex = difference + dataByteLength;
-
-                    // Copy the original data
-                    string[] modifiedBytes = new string[byteLength];
-                    Array.Copy(originalBytes, modifiedBytes, byteLength);
-
-                    // Replace the specified section with the replacement data
-                    for (int i = difference; i < endIndex; i++)
-                    {
-                        if (i >= byteLength || i - difference >= replacementBytes.Length) break;
-                        modifiedBytes[i] = replacementBytes[i - difference];
-                    }
-
-                    // Combine the modified bytes into a single string
-                    return string.Join(" ", modifiedBytes);
-                }
-            }
-            return data;
-        }
-
-
-        /* Here index 0 is hex, index 1 is decimal, and index 2 is binary */
-        private string[,] GetValueVariations(string newValue, bool isHex)
-        {
-            string[,] values = new string[1, 3];
-            string[] bytes = newValue.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-
-            if(hexButton.Checked || isHex)
-            {
-                values[0, 0] = newValue; // Hex
-                values[0, 1] = string.Join(" ", Array.ConvertAll(bytes, hex => long.Parse(hex, System.Globalization.NumberStyles.HexNumber))); //string.Join(" ", bytes.Select(hex => byte.Parse(hex, System.Globalization.NumberStyles.HexNumber))); // Decimal
-                values[0, 2] = string.Join(" ", bytes.Select(hexByte => Convert.ToString(long.Parse(hexByte, System.Globalization.NumberStyles.HexNumber), 2).PadLeft(8, '0'))); // Binary
-            }
-            else if(decimalButton.Checked)
-            {
-                var decimalNumbers = bytes.Select(number => long.Parse(number)).ToList();
-                values[0, 0] = string.Join(" ", decimalNumbers.Select(decimalValue => decimalValue.ToString("X"))); // Hex
-                values[0, 1] = newValue; // Decimal
-                values[0, 2] = string.Join(" ", decimalNumbers.Select(decimalValue => Convert.ToString(decimalValue, 2).PadLeft(8, '0'))); // Binary
-            }
-            else
-            {
-                var binaryBytes = bytes.Select(binary => Convert.ToByte(binary, 2)).ToArray(); 
-                values[0, 0] = BitConverter.ToString(binaryBytes).Replace("-", " "); // Hex
-                values[0, 1] = string.Join(" ", binaryBytes.Select(byteValue => byteValue.ToString())); // Decimal
-                values[0, 2] = newValue; // Binary
-            }
-            Console.WriteLine("Hex:" + string.Join(" ", values[0, 0]) ); //+ "  Decimal:" + string.Join(" ", values[0, 1]) + "  Binary:" + string.Join(" ", values[0, 2])
-            return values;
         }
 
         private void DataGridView_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)

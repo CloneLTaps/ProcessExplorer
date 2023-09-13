@@ -11,8 +11,6 @@ namespace ProcessExplorer.components.impl
         {
             StartPoint = startingPoint;
 
-            Console.WriteLine("OptionalPeHeader64 1 StartPoint:" + startingPoint);
-
             Desc = new string[RowSize];
             Size = new int[RowSize];
             Size[0] = 8; Desc[0] = "ImageBase (8 bytes) prefered base address when loaded.";
@@ -39,20 +37,17 @@ namespace ProcessExplorer.components.impl
 
             SetEndPoint();
 
-            Console.WriteLine("OptionalPeHeader64 2 EndPoint:" + EndPoint);
-
             Characteristics = new Dictionary<int, string> {
-                { 0x0001, "IMAGE_DLLCHARACTERISTICS_HIGH_ENTROPY_VA" },
-                { 0x0002, "IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE" },
-                { 0x0004, "IMAGE_DLLCHARACTERISTICS_FORCE_INTEGRITY" },
-                { 0x0008, "IMAGE_DLLCHARACTERISTICS_NX_COMPAT" },
-                { 0x0010, "IMAGE_DLLCHARACTERISTICS_NO_ISOLATION" },
-                { 0x0020, "IMAGE_DLLCHARACTERISTICS_NO_SEH" },
-                { 0x0040, "IMAGE_DLLCHARACTERISTICS_NO_BIND" },
-                { 0x0080, "IMAGE_DLLCHARACTERISTICS_APPCONTAINER" },
-                { 0x0100, "IMAGE_DLLCHARACTERISTICS_WDM_DRIVER" },
-                { 0x0200, "IMAGE_DLLCHARACTERISTICS_GUARD_CF" },
-                { 0x0400, "IMAGE_DLLCHARACTERISTICS_TERMINAL_SERVER_AWARE" }
+                { 0x0020, "IMAGE_DLLCHARACTERISTICS_HIGH_ENTROPY_VA" },
+                { 0x0040, "IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE" },
+                { 0x0080, "IMAGE_DLLCHARACTERISTICS_FORCE_INTEGRITY" },
+                { 0x0100, "IMAGE_DLLCHARACTERISTICS_NX_COMPAT" },
+                { 0x0200, "IMAGE_DLLCHARACTERISTICS_NO_ISOLATION" },
+                { 0x0400, "IMAGE_DLLCHARACTERISTICS_NO_SEH" },
+                { 0x0800, "IMAGE_DLLCHARACTERISTICS_NO_BIND" },
+                { 0x1000, "IMAGE_DLLCHARACTERISTICS_APPCONTAINER" },
+                { 0x2000, "IMAGE_DLLCHARACTERISTICS_WDM_DRIVER" },
+                { 0x8000, "IMAGE_DLLCHARACTERISTICS_TERMINAL_SERVER_AWARE" }
             };
         }
 
@@ -64,18 +59,17 @@ namespace ProcessExplorer.components.impl
                 "0x00100005 - Windows XP", "0x00200005 - Windows XP x64", "0x00000006 - Windows Vista", "0x00100006 - Windows 7", "0x00200006 - Windows 8",
                     "0x00300006 - Windows 8.1", "0x00000010  - Windows 10" };
 
-               /* string combinedHex = OptionsForm.GetBigEndianValue(hexArray[row - 1, 1] + " " + hexArray[row, 1]);
-                Console.WriteLine("CombinedHexBigEndian:" + combinedHex + " LittleEndian:" + (hexArray[row - 1, 1] + " " + hexArray[row, 1]));
-
+                string combinedHex = OptionsForm.GetBigEndianValue(GetData(row - 1, 1, ProcessHandler.DataType.HEX, false, false) + " " + GetData(row, 1, ProcessHandler.DataType.HEX, false, false));
                 using (OptionsForm optionsForm = new OptionsForm(this, combinedHex, "Minimum Operating System Version", row, options, null, null))
                 {
                     DialogResult result = optionsForm.ShowDialog();
                     if (result == DialogResult.OK)
                     {
-                        Console.WriteLine("Open custom Options box");
-
+                        return; // ToDo
+                        string updatedComboBox = optionsForm.GetUpdatedComboBoxValue();
+                        if (updatedComboBox != null) UpdateData(4, updatedComboBox, true, false);
                     }
-                }*/
+                }
             }
             else if (row == 8)
             {
@@ -83,18 +77,17 @@ namespace ProcessExplorer.components.impl
                 "0x00100005 - Windows XP", "0x00200005 - Windows XP x64", "0x00000006 - Windows Vista", "0x00100006 - Windows 7", "0x00200006 - Windows 8",
                     "0x00300006 - Windows 8.1", "0x00000010  - Windows 10" };
 
-               /* string combinedHex = OptionsForm.GetBigEndianValue(hexArray[row - 1, 1] + " " + hexArray[row, 1]);
-                Console.WriteLine("CombinedHexBigEndian:" + combinedHex + " LittleEndian:" + (hexArray[row - 1, 1] + " " + hexArray[row, 1]));
-
+                string combinedHex = OptionsForm.GetBigEndianValue(GetData(row - 1, 1, ProcessHandler.DataType.HEX, false, false) + " " + GetData(row, 1, ProcessHandler.DataType.HEX, false, false));
                 using (OptionsForm optionsForm = new OptionsForm(this, combinedHex, "Minimum Subsystem Version", row, options, null, null))
                 {
                     DialogResult result = optionsForm.ShowDialog();
                     if (result == DialogResult.OK)
                     {
-                        Console.WriteLine("Open custom Options box");
-
+                        return; // ToDo
+                        string updatedComboBox = optionsForm.GetUpdatedComboBoxValue();
+                        if (updatedComboBox != null) UpdateData(8, updatedComboBox, true, false);
                     }
-                }*/
+                }
             }
             else if (row == 13)
             {
@@ -108,8 +101,8 @@ namespace ProcessExplorer.components.impl
                     DialogResult result = optionsForm.ShowDialog();
                     if (result == DialogResult.OK)
                     {
-                        Console.WriteLine("Open custom Options box");
-
+                        string updatedComboBox = optionsForm.GetUpdatedComboBoxValue();
+                        if (updatedComboBox != null) UpdateData(13, updatedComboBox, true, false);
                     }
                 }
             }
@@ -122,8 +115,8 @@ namespace ProcessExplorer.components.impl
                     DialogResult result = optionsForm.ShowDialog();
                     if (result == DialogResult.OK)
                     {
-                        Console.WriteLine("Open custom Options box");
-
+                        string updatedCharacteristic = optionsForm.GetUpdatedCharacterisitcs();
+                        UpdateData(14, updatedCharacteristic, true, false);
                     }
                 }
             }

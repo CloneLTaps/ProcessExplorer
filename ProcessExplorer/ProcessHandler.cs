@@ -149,16 +149,12 @@ namespace ProcessExplorer
                         char asciiChar = b >= 32 && b <= 126 ? (char)b : '.';
                         ascii += asciiChar;
 
-                        Console.WriteLine("Ascii:" + ascii + " Count:" + totalCount + " SkipAmount:" + initialSkipAmount + " StartingIndex:" + startingIndex);
-
                         if (totalCount++ > 8) return; // If we dont find it then we must of found all of the section headers
 
                         ProcessComponent sectionType = GetProcessComponent(ascii + " section header");
-                        Console.WriteLine("ProcessComponent:" + sectionType.ToString());
                         if (sectionType != ProcessComponent.NULL_COMPONENT)
                         {
                             ProcessComponent sectionBodyType = GetProcessComponent(ascii + " section body");
-                            Console.WriteLine("SectionBodyType:" + sectionBodyType.ToString());
                             SectionHeader header = new SectionHeader(this, startPoint, sectionType);
                             SectionBody body = new SectionBody(this, header.bodyStartPoint, header.bodyEndPoint, sectionBodyType);
 
@@ -220,6 +216,101 @@ namespace ProcessExplorer
             {
                 Console.WriteLine("An error occurred: " + ex.Message);
             }
+        }
+
+        public string ReplaceData(int difference, int dataByteLength, string data, string replacment, int originalLength, ProcessHandler.ProcessComponent type)
+        {
+            string[] originalBytes = data.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] replacementBytes = replacment.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+            if (type == ProcessHandler.ProcessComponent.DOS_STUB || type.ToString().Contains("SECTION_BODY"))
+            {   // This means I just need to replace the data instead of switching out a few bytes
+                if (replacementBytes.Length < originalLength)
+                {   // This means the user is trying to reduce the data sections size for some reason
+                    return string.Join(" ", replacementBytes);
+                }
+
+                for (int i = 0; i < replacementBytes.Length; i++)
+                {
+                    if (originalBytes.Length - 1 >= i) originalBytes[i] = replacementBytes[i];
+                }
+                return string.Join(" ", originalBytes);
+            }
+
+            if (difference >= 0 && dataByteLength > 0 && difference + (dataByteLength * 3) <= data.Length)
+            {
+                int byteLength = originalBytes.Length;
+                if (difference >= 0 && dataByteLength > 0 && difference + dataByteLength <= byteLength)
+                {
+                    // Calculate the start and end indexes of the section to replace
+                    int endIndex = difference + dataByteLength;
+
+                    // Copy the original data
+                    string[] modifiedBytes = new string[byteLength];
+                    Array.Copy(originalBytes, modifiedBytes, byteLength);
+
+                    // Replace the specified section with the replacement data
+                    for (int i = difference; i < endIndex; i++)
+                    {
+                        if (i >= byteLength || i - difference >= replacementBytes.Length) break;
+                        modifiedBytes[i] = replacementBytes[i - difference];
+                    }
+
+                    // Combine the modified bytes into a single string
+                    return string.Join(" ", modifiedBytes);
+                }
+            }
+            return data;
+        }
+
+        /* Here index 0 is hex, index 1 is decimal, and index 2 is binary */
+        public string[,] GetValueVariations(string newValue, bool hexChecked, bool decimalChecked)
+        {
+            string[,] values = new string[1, 3];
+            string[] bytes = newValue.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+            if (hexChecked)
+            {
+                bytes = newValue.Replace(" ", "") // Remove spaces
+                    .Select((c, index) => new { Char = c, Index = index })
+                    .GroupBy(x => x.Index / 2).Select(group => new string(group.Select(x => x.Char).ToArray())).ToArray();
+               
+                values[0, 0] = string.Join(" ", bytes); // Hex
+                values[0, 1] = string.Join(" ", Array.ConvertAll(bytes, hex => long.Parse(hex, System.Globalization.NumberStyles.HexNumber))); //string.Join(" ", bytes.Select(hex => byte.Parse(hex, System.Globalization.NumberStyles.HexNumber))); // Decimal
+                values[0, 2] = string.Join(" ", bytes.Select(hexByte => Convert.ToString(long.Parse(hexByte, System.Globalization.NumberStyles.HexNumber), 2).PadLeft(8, '0'))); // Binary
+            }
+            else if (decimalChecked)
+            {
+                var decimalNumbers = bytes.Select(number => long.Parse(number)).ToList();
+                values[0, 0] = string.Join(" ", decimalNumbers.Select(decimalValue => decimalValue.ToString("X"))); // Hex
+                values[0, 1] = newValue; // Decimal
+                values[0, 2] = string.Join(" ", decimalNumbers.Select(decimalValue => Convert.ToString(decimalValue, 2).PadLeft(8, '0'))); // Binary
+            }
+            else
+            {
+                var binaryBytes = bytes.Select(binary => Convert.ToByte(binary, 2)).ToArray();
+                values[0, 0] = BitConverter.ToString(binaryBytes).Replace("-", " "); // Hex
+                values[0, 1] = string.Join(" ", binaryBytes.Select(byteValue => byteValue.ToString())); // Decimal
+                values[0, 2] = newValue; // Binary
+            }
+            return values;
+        }
+
+        public void UpdateASCII(string hexString, int row)
+        {
+            string[] hexBytes = hexString.Split(' '); // Split by spaces
+
+            string asciiString = "";
+            foreach (string hexByte in hexBytes)
+            {
+                if (byte.TryParse(hexByte, System.Globalization.NumberStyles.HexNumber, null, out byte asciiByte))
+                {
+                    if (asciiByte >= 32 && asciiByte <= 128) asciiString += (char)asciiByte;
+                    else asciiString += ".";
+                }
+                else asciiString += ".";
+            }
+            FilesHex[row, 2] = asciiString;
         }
 
         public int GetComponentsRowIndexCount(ProcessComponent component)

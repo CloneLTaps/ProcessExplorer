@@ -6,14 +6,12 @@ namespace ProcessExplorer.components
     {
         public DosStub(ProcessHandler processHandler, int startPoint) : base(processHandler, ProcessHandler.ProcessComponent.DOS_STUB, 1, 3) 
         {
-            Console.WriteLine("Start DosStub");
             if (processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.EVERYTHING).EndPoint 
                 <= processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.DOS_HEADER).EndPoint) 
             {   // This means our PE only consits of a PE Header 
                 FailedToInitlize = true;
                 return;
             }
-            Console.WriteLine("Start DosStub p2 StartPoint:" + startPoint);
 
             StartPoint = startPoint;
             Size = null;
@@ -46,7 +44,6 @@ namespace ProcessExplorer.components
                     }
                 }
             }
-            Console.WriteLine("DosStub FAILED TO FIND END \n");
             FailedToInitlize = true;
         }
 

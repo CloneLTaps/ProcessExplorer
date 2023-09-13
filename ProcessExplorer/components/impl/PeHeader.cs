@@ -10,7 +10,6 @@ namespace ProcessExplorer.components
     {
         public PeHeader(ProcessHandler processHandler, int startingPoint) : base(processHandler, ProcessHandler.ProcessComponent.PE_HEADER, 8, 3)
         {
-            Console.WriteLine("PeHeader Start 1");
             if(processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.EVERYTHING).EndPoint <= 
                 processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.DOS_STUB).EndPoint + 24)
             {   // This means this file will not contain the nessary PE Header fields thus making this invalid
@@ -19,8 +18,6 @@ namespace ProcessExplorer.components
             }
 
             StartPoint = startingPoint;
-
-            Console.WriteLine("PeHeader Start 2 startPoint:" + startingPoint);
 
             Desc = new string[RowSize];
             Size = new int[RowSize];
@@ -35,10 +32,7 @@ namespace ProcessExplorer.components
 
             SetEndPoint();
 
-            Console.WriteLine("PeHeader Start 3 EndPoint:" + EndPoint);
-
             string[] signatureHex = GetData(0, 1, ProcessHandler.DataType.HEX, false, true).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            Console.WriteLine("PeHeader Start 4: " + string.Join(" ", signatureHex) );
             if (signatureHex[0] != "50" || signatureHex[1] != "45" && signatureHex[2] != "00" || signatureHex[3] != "00")
             {   // This means this is not a valid PE since the header signature was incorrect
                 FailedToInitlize = true; 
@@ -95,27 +89,28 @@ namespace ProcessExplorer.components
                     DialogResult result = optionsForm.ShowDialog();
                     if (result == DialogResult.OK)
                     {
-                        Console.WriteLine("Open custom Options box");
-
+                        string updatedComboBox = optionsForm.GetUpdatedComboBoxValue();
+                        if(updatedComboBox != null) UpdateData(1, updatedComboBox, true, false);
                     }
                 }
             }
             else if(row == 3)
             {
-                string hexValue = OptionsForm.GetBigEndianValue(GetData(row, 1, ProcessHandler.DataType.HEX, false, false));
+                string hexValue = GetData(row, 1, ProcessHandler.DataType.HEX, true, false);
                 uint unixTimestamp = uint.Parse(hexValue, NumberStyles.HexNumber);
-                Console.WriteLine("OptionsHex:" + hexValue + " NormalHex:" + GetData(row, 1, ProcessHandler.DataType.HEX, true, false));
 
                 DateTime unixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
                 DateTime dateTime = unixEpoch.AddSeconds(unixTimestamp);
+
+                Console.WriteLine(dateTime.Date.ToString());
 
                 using (OptionsForm optionsForm = new OptionsForm(this, null, "Date and Time", row, null, null, dateTime))
                 {
                     DialogResult result = optionsForm.ShowDialog();
                     if (result == DialogResult.OK)
                     {
-                        Console.WriteLine("Open custom Options box");
-
+                        string updatedDate = optionsForm.GetUpdatedDateAndTime();
+                        UpdateData(3, updatedDate, true, false);
                     }
                 }
             }
@@ -129,9 +124,7 @@ namespace ProcessExplorer.components
                     if (result == DialogResult.OK)
                     {
                         string updatedCharacteristic = optionsForm.GetUpdatedCharacterisitcs();
-                        Console.WriteLine("Open custom Options box");
-                        Console.WriteLine("Updated hexString:" + optionsForm.GetUpdatedCharacterisitcs());
-
+                        UpdateData(7, updatedCharacteristic, true, false);
                     }
                 }
             }

@@ -86,26 +86,14 @@ namespace ProcessExplorer.components
         /// <param name="column"> Column of 0 means offset, column of 1 means data, and column of 2 means description. </param>
         public string GetData(int row, int column, ProcessHandler.DataType dataType, bool bigEndian, bool inFileOffset)
         {
-            //Console.WriteLine(" ");
-            if(GetType().Name != "Everything" && column != 2 && column != 0)
-            {
-                Console.WriteLine("SubHeader:" + this.GetType().Name + " Row:" + row + " Column:" + column + " BigEndian:" + bigEndian + " DataType:" + dataType.ToString() +
-                 " NullSize:" + (Size == null) + " FailedToInitlize:" + FailedToInitlize + " RowSize:" + (Size != null ? Size.Length : 0) + " StartPoint:" + StartPoint
-                + " EndPoint:" + EndPoint);
-            }
             if(FailedToInitlize) return "";  // Something went wrong with this file so don't return any text
             if (Size != null && row >= Size.Length) return "";  // This returns the blank text for index larger than the size of our headers
 
             if (Component == ProcessHandler.ProcessComponent.EVERYTHING)
             {
                 if(column == 0 && processHandler.OffsetsInHex) return GetCorrectFormat(row, column, ProcessHandler.DataType.HEX, bigEndian);
-
             }
             int firstRow = (int)Math.Floor(StartPoint / 16.0);  // First row of our data
-            if (GetType().Name != "Everything" && column != 2 && column != 0)
-            {
-                Console.WriteLine("\t Row:" + row + " FirstRow:" + firstRow + " Total:" + ((row + firstRow) * 16) + " Modolo:" + (StartPoint % 16));
-            }
 
             if (Size == null && (row + firstRow) * 16 >= EndPoint) return "";  // This will handle blank spots in sections and the Dos Stub     
 
@@ -133,7 +121,6 @@ namespace ProcessExplorer.components
 
             if (column == 0)
             {
-                Console.WriteLine("COLUMNS 0 GETOFFSET:" + GetOffset((inFileOffset ? relativeOfffset + StartPoint : relativeOfffset), dataType) + " RelativeOffset:" + relativeOfffset);
                 return GetOffset((inFileOffset ? relativeOfffset + StartPoint : relativeOfffset), processHandler.OffsetsInHex ? ProcessHandler.DataType.HEX : dataType);  // This means we just need to return the offset
             }
             relativeOfffset += StartPoint % 16;
@@ -142,12 +129,6 @@ namespace ProcessExplorer.components
             int startingDataRow = firstRow + (int)Math.Floor(relativeOfffset / 16.0);  // Row where our data begins (data may extend onto additional rows)
 
             int fileStartOffset = relativeOfffset + (startingDataRow * 16);  // Target data's offset relative to the start of the file
-
-            if (GetType().Name != "Everything" && column != 2 && column != 0)
-            {
-                Console.WriteLine("\t RelOffset:" + relativeOfffset + " FileOffset:" + fileStartOffset + " Bytes:" + bytes + " GetOffSet:" + 
-                    (column == 0 ? GetOffset((inFileOffset ? relativeOfffset + StartPoint : relativeOfffset), dataType) : "") + " FirstRow:" + firstRow + " StartingDataRow:" + startingDataRow);
-            }
             
             string[] data = null;
             int startingRowOffset = relativeOfffset - ((startingDataRow - firstRow) * 16);  // Offset relative to the starting row
@@ -159,23 +140,10 @@ namespace ProcessExplorer.components
 
                 int weight = Size == null ? ((row - startingDataRow + 1) * 16) : data.Length;  // First half works for sections and Dos headers and second works for normal headers
 
-                if (column != 2 && column != 0)
-                {
-                    Console.WriteLine("\t SubHeader:" + this.GetType().Name + " i:" + i + " Row:" + row + " StartingDataRow:" + startingDataRow + " RelOffset:" + relativeOfffset
-                         + " StartRowOffset:" + startingRowOffset +  " Bytes:" + bytes + " Total:" + weight  + " DataSize:" + data.Length);
-                }
-
                 if (weight >= startingRowOffset + bytes) break;  // This means our data array now contains enough data to retrieve the requested data
             }
 
             string finalData = string.Join(" ", data.Skip(startingRowOffset).Take(bytes));
-
-            if (column != 2 && column != 0)
-            {
-                Console.WriteLine("\t Result:" + string.Join(" ", data.Skip(startingRowOffset).Take(bytes)) + " RelOffset:" + relativeOfffset + " bytes:" + bytes 
-                     + " StartingDataRow:" + startingDataRow + " DataSize:" + data.Length + " Data:" + string.Join(" ", data) + " BigEndian:" + bigEndian + " Data:" + finalData );
-            }
-
 
             if (bigEndian)
             {
@@ -232,6 +200,25 @@ namespace ProcessExplorer.components
             };
         }
 
+        public void UpdateData(int row, string data, bool isHexChecked, bool isDecimalChecked)
+        {
+            Console.WriteLine(" \n");
+            int orignalLength = (GetData(row, 1, ProcessHandler.DataType.HEX, false, false).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)).Length;
+            string[,] values = processHandler.GetValueVariations(data, isHexChecked, isDecimalChecked);
+
+            int offset = int.Parse(GetData(row, 0, ProcessHandler.DataType.DECIMAL, false, true)); // This gets the file offset in decimal form
+            int everythingRow = (int)Math.Floor(offset / 16.0);
+            int everythingOffset = int.Parse(processHandler.FilesDecimal[everythingRow, 0]);
+            int dataByteLength = (GetData(row, 1, ProcessHandler.DataType.HEX, false, false).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)).Length;
+            int difference = offset - everythingOffset;
+
+            processHandler.FilesHex[everythingRow, 1] = processHandler.ReplaceData(difference, dataByteLength, processHandler.FilesHex[everythingRow, 1], values[0, 0], orignalLength, Component);
+            processHandler.FilesDecimal[everythingRow, 1] = processHandler.ReplaceData(difference, dataByteLength, processHandler.FilesDecimal[everythingRow, 1], values[0, 1], orignalLength, Component);
+            processHandler.FilesBinary[everythingRow, 1] = processHandler.ReplaceData(difference, dataByteLength, processHandler.FilesBinary[everythingRow, 1], values[0, 2], orignalLength, Component);
+
+            processHandler.UpdateASCII(processHandler.FilesHex[everythingRow, 1], everythingRow);
+        }
+
         protected string[] ReadCharacteristics(string hexString)
         {
             long characteristicsValue = Convert.ToInt64(hexString, 16);
@@ -283,10 +270,16 @@ namespace ProcessExplorer.components
             return "." + type.ToString().ToLower().Replace("_m", "$").Replace("_", " ");
         }
 
+        public static string ReverseHexString(string hex)
+        {
+            char[] chars = hex.ToCharArray();
+            Array.Reverse(chars);
+            return new string(chars);
+        }
+
 
         protected class OptionsForm : Form
         {
-            private readonly SuperHeader header;
             public readonly ComboBox comboBox;
             public readonly DateTimePicker dateTimePicker;
             public readonly CheckedListBox checkedListBox;
@@ -308,10 +301,8 @@ namespace ProcessExplorer.components
                     comboBox.Width = Math.Max(maxWidth + 20, 180); // Set minimum width and account for padding
                     comboBox.Items.AddRange(dropDownComboBoxArgs);
 
-                    // Set the selected value 
-                    string selectedValue = bigEndianHex != null ? bigEndianHex : header.GetData(selectedRow, 1, ProcessHandler.DataType.HEX, true, false); // This returns the big endian hex
-                    Console.WriteLine("BigEndianHex:" + bigEndianHex + " GetValue:" + header.GetData(selectedRow, 1, ProcessHandler.DataType.HEX, true, false) +
-                       " OldGetValue:" + GetBigEndianValue(header.GetData(selectedRow, 1, ProcessHandler.DataType.HEX, false, false)));
+                    string selectedValue = bigEndianHex != null ? bigEndianHex : GetBigEndianValue(header.GetData(selectedRow, 1, ProcessHandler.DataType.HEX, false, false)); // This returns the big endian hex
+                    
                     string matchingString = dropDownComboBoxArgs.FirstOrDefault(str => {
                         int hexPrefixLength = str.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? 2 : 0;
                         return str.Length > hexPrefixLength && str.Substring(hexPrefixLength).StartsWith(selectedValue, StringComparison.OrdinalIgnoreCase);
@@ -333,9 +324,7 @@ namespace ProcessExplorer.components
 
                     checkedListBox.Items.AddRange(checkBoxComboBoxArgs);
 
-                    string selectedValue = bigEndianHex != null ? bigEndianHex : header.GetData(selectedRow, 1, ProcessHandler.DataType.HEX, true, false); // This returns the big endian hex
-                    Console.WriteLine("BigEndianHex:" + bigEndianHex + " GetValue:" + header.GetData(selectedRow, 1, ProcessHandler.DataType.HEX, true, false) +
-                        " OldGetValue:" + GetBigEndianValue(header.GetData(selectedRow, 1, ProcessHandler.DataType.HEX, false, false)));
+                    string selectedValue = bigEndianHex != null ? bigEndianHex : GetBigEndianValue(header.GetData(selectedRow, 1, ProcessHandler.DataType.HEX, false, false)); // This returns the big endian hex
                     string[] combinedStrings = header.ReadCharacteristics(selectedValue);  
 
                     int i = 0;
@@ -357,8 +346,6 @@ namespace ProcessExplorer.components
                 }
                 else if(initialDateTime != null)
                 {
-                    Console.WriteLine("Date and time" + initialDateTime);
-
                     dateTimePicker = new DateTimePicker();
                     dateTimePicker.Location = new Point(20, 20);
                     dateTimePicker.Width = 200; 
@@ -397,16 +384,26 @@ namespace ProcessExplorer.components
 
             private void OkButton_Click(object sender, EventArgs e)
             {
-/*                foreach (var item in checkedListBox.CheckedItems)
-                {
-                    item.
-                }*/
                 Close();
+            }
+
+            public string GetUpdatedComboBoxValue()
+            {
+                if (comboBox.SelectedItem == null) return null;
+                string result = (string) comboBox.SelectedItem;
+                string hex = result.Substring(0, result.IndexOf(' ')).Replace("0x", ""); // Big endian form
+
+                // Add a leading '0' if the string length is odd
+                if (hex.Length % 2 != 0) hex = "0" + hex;
+
+                string[] bytes = Enumerable.Range(0, hex.Length / 2).Select(i => hex.Substring(i * 2, 2)).ToArray();
+                Array.Reverse(bytes);
+                return string.Join(" ", bytes);
             }
 
             public string GetUpdatedCharacterisitcs()
             {
-                long characteristicsValue = 0;
+                ushort characteristicsValue = 0;
 
                 foreach (var item in checkedListBox.CheckedItems)
                 {
@@ -416,21 +413,51 @@ namespace ProcessExplorer.components
                     {
                         // Trim and parse the hex value part
                         string hexValue = parts[0].Trim();
-                        Console.WriteLine("HexValue:" + hexValue);
-                        if (hexValue.StartsWith("0x", StringComparison.OrdinalIgnoreCase) && long.TryParse(hexValue.Substring(2), NumberStyles.HexNumber, null, out long hexFlag))
+                        if (hexValue.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
                         {
-                            // OR the hexFlag with the characteristicsValue
-                            characteristicsValue |= hexFlag;
+                            // Parse the hex value as an integer
+                            int value = int.Parse(hexValue.Substring(2), NumberStyles.HexNumber);
+
+                            // Swap the bytes to convert from big-endian to little-endian
+                            characteristicsValue |= (ushort)((value >> 8) | (value << 8));
                         }
                     }
                 }
 
-                // Convert the resulting value to a hex string
-                string hexString = characteristicsValue.ToString("X");
+                string hexString = characteristicsValue.ToString("X4"); // Convert the characteristicsValue to a hexadecimal string with two bytes
 
-                return hexString;
+                // Ensure that the string has two bytes, adding leading zeros if necessary
+                if (hexString.Length < 4) hexString = hexString.PadLeft(4, '0');
+
+                return hexString.Insert(2, " "); // Insert a space between the bytes
             }
 
+            public string GetUpdatedDateAndTime()
+            {
+                // Assuming you have a DateTimePicker control named dateTimePicker1
+                DateTime selectedDateTime = dateTimePicker.Value;
+
+                // Define a reference date (e.g., January 1, 1970, as a Unix timestamp)
+                DateTime referenceDate = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+                // Calculate the difference between selectedDateTime and referenceDate
+                TimeSpan difference = selectedDateTime.ToUniversalTime() - referenceDate;
+
+                // Convert the difference to seconds (Unix timestamp)
+                long unixTimestamp = (long)difference.TotalSeconds;
+
+                // Convert the timestamp to a little-endian hex string with four bytes
+                string hexString = unixTimestamp.ToString("X8");
+
+                // Add spaces between every two characters (bytes)
+                return string.Join(" ", Enumerable.Range(0, hexString.Length / 2).Select(i => hexString.Substring(i * 2, 2)));
+            }
+
+            /// <summary>
+            ///  This changes little-endian data into big-endian while preserving "usless" zeros which is required for making
+            ///  OptionsForm work correctly. On the other hand GetData() has a BigEndian option but this removes "usless" zeros
+            ///  which is mainly used for displaying data to the user in DataGridView.
+            /// </summary>
             public static string GetBigEndianValue(string littleEndian)
             {
                 string[] values = littleEndian.Split(' ');
