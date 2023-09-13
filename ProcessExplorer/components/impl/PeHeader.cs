@@ -8,10 +8,11 @@ namespace ProcessExplorer.components
 {
     class PeHeader : SuperHeader
     {
-        public PeHeader(ProcessHandler processHandler, int startingPoint) : base(processHandler, ProcessHandler.ProcessComponent.PE_HEADER, 8, 3)
+        public int SectionAmount { get; private set; }
+        public PeHeader(ProcessHandler processHandler, int startingPoint) : base(processHandler, "pe header", 8, 3)
         {
-            if(processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.EVERYTHING).EndPoint <= 
-                processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.DOS_STUB).EndPoint + 24)
+            if(processHandler.GetComponentFromMap("everything").EndPoint <= 
+                processHandler.GetComponentFromMap("dos stub").EndPoint + 24)
             {   // This means this file will not contain the nessary PE Header fields thus making this invalid
                 FailedToInitlize = true;
                 return;
@@ -42,9 +43,7 @@ namespace ProcessExplorer.components
             int bit = int.Parse(OptionsForm.GetBigEndianValue(GetData(1, 1, ProcessHandler.DataType.HEX, false, true)), NumberStyles.HexNumber);
             processHandler.Is64Bit = bit == 0x8664;
 
-            Console.WriteLine("PeHeader StartPoint:" + StartPoint + " EndPoint:" + EndPoint + " bit:" + bit + " NormalBigEndian:" 
-                + GetData(1, 1, ProcessHandler.DataType.HEX, true, true)
-                + " OptionsBigEndian:" + OptionsForm.GetBigEndianValue(GetData(1, 1, ProcessHandler.DataType.HEX, false, true)) + " 64Bit:" + processHandler.Is64Bit);
+            SectionAmount = int.Parse(GetData(2, 1, ProcessHandler.DataType.DECIMAL, true, true)); // Sets the amount of sections
 
             // None of our headers have more than 1 characteristic type structure 
             Characteristics = new Dictionary<int, string> {

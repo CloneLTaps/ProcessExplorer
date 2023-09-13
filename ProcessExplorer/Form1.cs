@@ -2,7 +2,6 @@
 using System.Text;
 using System.Drawing;
 using System.Windows.Forms;
-using System.Linq;
 using System.IO;
 using ProcessExplorer.components.impl;
 using ProcessExplorer.components;
@@ -13,7 +12,7 @@ namespace ProcessExplorer
     {
         private readonly ContextMenuStrip fileContextMenu = new ContextMenuStrip();
         private readonly ContextMenuStrip settingsMenu = new ContextMenuStrip();
-        private ProcessHandler.ProcessComponent selectedComponent = ProcessHandler.ProcessComponent.NULL_COMPONENT;
+        private string selectedComponent = "null";
         private CharacterSet selectedCharacter = CharacterSet.ASCII;
         private ProcessHandler processHandler;
 
@@ -77,7 +76,7 @@ namespace ProcessExplorer
             int column2StartingWidth = 492; 
             int column3StartingWidth = 150;
 
-            if(processHandler != null && selectedComponent != ProcessHandler.ProcessComponent.NULL_COMPONENT && processHandler.GetComponentFromMap(selectedComponent).Size != null)
+            if(processHandler != null && selectedComponent != "null" && processHandler.GetComponentFromMap(selectedComponent).Size != null)
             {
                 column2StartingWidth = column3StartingWidth;
                 column3StartingWidth = 492;
@@ -191,31 +190,31 @@ namespace ProcessExplorer
             TreeNode certifcationTable = new TreeNode("Certificate Table");
             bool addCertifcationTable = false;
 
-            SuperHeader optionalPeHeader = processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.OPITIONAL_PE_HEADER);
+            SuperHeader optionalPeHeader = processHandler.GetComponentFromMap(optionalPeHeaderNode.Text.ToLower());
             if (optionalPeHeader != null && !optionalPeHeader.FailedToInitlize) peHeaderNode.Nodes.Add(optionalPeHeaderNode);
 
             TreeNode optionalPeHeader64Node = new TreeNode("Optional PE Header 64");
-            SuperHeader optionalPeHeader64 = processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.OPITIONAL_PE_HEADER_64);
+            SuperHeader optionalPeHeader64 = processHandler.GetComponentFromMap(optionalPeHeader64Node.Text.ToLower());
             if (optionalPeHeader64 != null && !optionalPeHeader64.FailedToInitlize && ((OptionalPeHeader)optionalPeHeader).peThirtyTwoPlus)
             {
                 peHeaderNode.Nodes.Add(optionalPeHeader64Node);
                 TreeNode optionalPeHeaderDataDirectories = new TreeNode("Optional PE Header Data Directories");
                 peHeaderNode.Nodes.Add(optionalPeHeaderDataDirectories);
 
-                OptionalPeHeaderDataDirectories dataDirectories = (OptionalPeHeaderDataDirectories) processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES);
+                OptionalPeHeaderDataDirectories dataDirectories = (OptionalPeHeaderDataDirectories) processHandler.GetComponentFromMap(optionalPeHeaderDataDirectories.Text.ToLower());
                 if (dataDirectories != null && !dataDirectories.FailedToInitlize && dataDirectories.CertificateTablePointer > 0 && dataDirectories.CertificateTableSize > 0)
                     addCertifcationTable = true;
             }
 
             TreeNode optionalPeHeader32Node = new TreeNode("Optional PE Header 32");
-            SuperHeader optionalPeHeader32 = processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.OPITIONAL_PE_HEADER_32);
+            SuperHeader optionalPeHeader32 = processHandler.GetComponentFromMap(optionalPeHeader32Node.Text.ToLower());
             if (optionalPeHeader32 != null && !optionalPeHeader32.FailedToInitlize && !((OptionalPeHeader)optionalPeHeader).peThirtyTwoPlus)
             {
                 peHeaderNode.Nodes.Add(optionalPeHeader32Node);
                 TreeNode optionalPeHeaderDataDirectories = new TreeNode("Optional PE Header Data Directories");
                 peHeaderNode.Nodes.Add(optionalPeHeaderDataDirectories);
 
-                OptionalPeHeaderDataDirectories dataDirectories = (OptionalPeHeaderDataDirectories)processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES);
+                OptionalPeHeaderDataDirectories dataDirectories = (OptionalPeHeaderDataDirectories)processHandler.GetComponentFromMap(optionalPeHeaderDataDirectories.Text.ToLower());
                 if (dataDirectories != null && !dataDirectories.FailedToInitlize && dataDirectories.CertificateTablePointer > 0 && dataDirectories.CertificateTableSize > 0)
                     addCertifcationTable = true;
             }
@@ -226,22 +225,21 @@ namespace ProcessExplorer
             {
                 SuperHeader header = map.Value;
                 string compString = header.Component.ToString();
-                if (!compString.Contains("SECTION_HEADER")) continue;
+                if (!compString.Contains("section header")) continue;
 
                 TreeNode sectionNode = new TreeNode("");
-                string sectionNodeText = SuperHeader.GetSectionString(header.Component);
-                sectionNode.Text = sectionNodeText;
+                sectionNode.Text = header.Component;
 
                 foreach (var innerMap in processHandler.componentMap)
                 {
                     SuperHeader body = innerMap.Value;
                     string newCompString = body.Component.ToString();
                    
-                    if (!newCompString.Contains("SECTION_BODY") || compString.Replace("SECTION_HEADER", "") != newCompString.Replace("SECTION_BODY", "")) continue;
+                    if (!newCompString.Contains("section body") || compString.Replace("section header", "") != newCompString.Replace("section body", "")) continue;
 
                     TreeNode sectionBodyNode = new TreeNode("")
                     {
-                        Text = SuperHeader.GetSectionString(body.Component)
+                        Text = body.Component
                     };
                     sectionNode.Nodes.Add(sectionBodyNode);
                     break;
@@ -249,9 +247,9 @@ namespace ProcessExplorer
                 mainSectionNode.Nodes.Add(sectionNode); // Add the main section node for each section to our parent node
             }
 
-            SuperHeader dosHeader = processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.DOS_HEADER);
-            SuperHeader dosStub = processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.DOS_STUB);
-            SuperHeader peHeader = processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.PE_HEADER);
+            SuperHeader dosHeader = processHandler.GetComponentFromMap("dos header");
+            SuperHeader dosStub = processHandler.GetComponentFromMap("dos stub");
+            SuperHeader peHeader = processHandler.GetComponentFromMap("pe header");
             if (dosHeader != null && !dosHeader.FailedToInitlize) rootNode.Nodes.Add(dosHeaderNode);
             if (dosStub != null && !dosStub.FailedToInitlize) rootNode.Nodes.Add(dosStubNode);
             if (peHeader != null && !peHeader.FailedToInitlize) rootNode.Nodes.Add(peHeaderNode);
@@ -280,8 +278,8 @@ namespace ProcessExplorer
             }
 
             // This will trigger the data to be dislayed
-            selectedComponent = ProcessHandler.ProcessComponent.EVERYTHING;
-            dataGridView.RowCount = processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.EVERYTHING).GetFilesRows();
+            selectedComponent = "everything";
+            dataGridView.RowCount = processHandler.GetComponentFromMap(selectedComponent).GetFilesRows();
             dataGridView.CellValueNeeded += DataGridView_CellValueNeeded;
             TriggerRedraw();
         }
@@ -327,7 +325,7 @@ namespace ProcessExplorer
                     relativeOffsetButton.Checked = false;
                     processHandler.Offset = ProcessHandler.OffsetType.FILE_OFFSET;
                     // RelativeOffset and FileOffsets are the same if you are viewing everything 
-                    if (selectedComponent != ProcessHandler.ProcessComponent.EVERYTHING)
+                    if (selectedComponent != "everything")
                         TriggerRedraw();
                 }
                 fileOffsetButton.Checked = true;
@@ -339,7 +337,7 @@ namespace ProcessExplorer
                     fileOffsetButton.Checked = false;
                     processHandler.Offset = ProcessHandler.OffsetType.RELATIVE_OFFSET;
                     // RelativeOffset and FileOffsets are the same if you are viewing everything 
-                    if (selectedComponent != ProcessHandler.ProcessComponent.EVERYTHING)
+                    if (selectedComponent != "everything")
                         TriggerRedraw();
                 }
                 relativeOffsetButton.Checked = true;
@@ -388,13 +386,11 @@ namespace ProcessExplorer
                 if (nodeText.Contains(processHandler.FileName)) nodeText = "everything";
 
                 int previousRowCount = processHandler.GetComponentsRowIndexCount(selectedComponent);
-                ProcessHandler.ProcessComponent selected = ProcessHandler.GetProcessComponent(nodeText);
+                string selected = nodeText.ToLower();
                 int newRowCount = processHandler.GetComponentsRowIndexCount(selected);
   
                 if (selected == selectedComponent) return;
                 selectedComponent = selected;
-
-                Console.WriteLine("SelectedComp:" + selectedComponent.ToString() + " Row:" + newRowCount + " NodeText:" + nodeText.ToLower() );
 
                 if(processHandler.ReterunToTop || newRowCount > previousRowCount) dataGridView.FirstDisplayedScrollingRowIndex = 0;
 
@@ -409,7 +405,7 @@ namespace ProcessExplorer
             string replace = replaceWithTextBox.Text;
             replaceButton.Checked = false;
 
-            if (search == "" || replace == "" || selectedComponent == ProcessHandler.ProcessComponent.NULL_COMPONENT) return;
+            if (search == "" || replace == "" || selectedComponent == "null") return;
             bool replaceAll = false;
 
             if (replaceAllCheckBox.Control is CheckBox checkBox)
@@ -417,7 +413,7 @@ namespace ProcessExplorer
                 if (checkBox.Checked) replaceAll = true;
             }
 
-            SuperHeader header = replaceAll ? processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.EVERYTHING) : processHandler.GetComponentFromMap(selectedComponent);
+            SuperHeader header = replaceAll ? processHandler.GetComponentFromMap("everything") : processHandler.GetComponentFromMap(selectedComponent);
             int firstRow = (int)Math.Floor(header.StartPoint / 16.0);
 
             int count = 0;
@@ -496,7 +492,7 @@ namespace ProcessExplorer
             SuperHeader selectedHeader = processHandler.GetComponentFromMap(selectedComponent);
             if (selectedHeader == null || row >= selectedHeader.RowSize || doubleByteButton.Checked) return;
            
-            if (selectedComponent == ProcessHandler.ProcessComponent.EVERYTHING)
+            if (selectedComponent == "everything")
             {   // if this is true then that means I need to update the other data source which first requies me to customize the data to the fit the structure
                 string[,] values = processHandler.GetValueVariations(newValue, hexButton.Checked, decimalButton.Checked);
 
@@ -511,7 +507,7 @@ namespace ProcessExplorer
                 foreach (var map in processHandler.componentMap)
                 {
                     SuperHeader comp = map.Value;
-                    if (comp.Component != ProcessHandler.ProcessComponent.EVERYTHING && comp.StartPoint <= offset && comp.EndPoint >= offset)
+                    if (comp.Component != "everything" && comp.StartPoint <= offset && comp.EndPoint >= offset)
                     {
                         //processHandler.RecalculateHeaders(comp);
                         TriggerRedraw();

@@ -7,7 +7,7 @@ namespace ProcessExplorer.components.impl
 {
     class OptionalPeHeader32 : SuperHeader
     {
-        public OptionalPeHeader32(ProcessHandler processHandler, int startingPoint) : base(processHandler, ProcessHandler.ProcessComponent.OPITIONAL_PE_HEADER_32, 22, 3)
+        public OptionalPeHeader32(ProcessHandler processHandler, int startingPoint) : base(processHandler, "optional pe header 32", 22, 3)
         {
             StartPoint = startingPoint;
 

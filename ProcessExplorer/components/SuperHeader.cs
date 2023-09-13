@@ -24,15 +24,15 @@ namespace ProcessExplorer.components
 
         public bool FailedToInitlize { get; protected set; }
 
-        public ProcessHandler.ProcessComponent Component { get; protected set; }
+        public string Component { get; protected set; }
 
         public Dictionary<int, string> Characteristics { get; protected set; }
 
-        public SuperHeader(ProcessHandler processHandler, ProcessHandler.ProcessComponent component, int rowSize, int columnSize)
+        public SuperHeader(ProcessHandler processHandler, string component, int rowSize, int columnSize)
         {
             this.processHandler = processHandler;
             this.ColumnSize = columnSize;
-            this.Component = component;
+            this.Component = component.ToLower();
             this.RowSize = rowSize;
 
             FailedToInitlize = false;
@@ -89,7 +89,7 @@ namespace ProcessExplorer.components
             if(FailedToInitlize) return "";  // Something went wrong with this file so don't return any text
             if (Size != null && row >= Size.Length) return "";  // This returns the blank text for index larger than the size of our headers
 
-            if (Component == ProcessHandler.ProcessComponent.EVERYTHING)
+            if (Component == "everything")
             {
                 if(column == 0 && processHandler.OffsetsInHex) return GetCorrectFormat(row, column, ProcessHandler.DataType.HEX, bigEndian);
             }
@@ -202,7 +202,6 @@ namespace ProcessExplorer.components
 
         public void UpdateData(int row, string data, bool isHexChecked, bool isDecimalChecked)
         {
-            Console.WriteLine(" \n");
             int orignalLength = (GetData(row, 1, ProcessHandler.DataType.HEX, false, false).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)).Length;
             string[,] values = processHandler.GetValueVariations(data, isHexChecked, isDecimalChecked);
 
@@ -262,12 +261,6 @@ namespace ProcessExplorer.components
         public int GetFilesColumns()
         {
             return processHandler.FilesHex.GetLength(1);
-        }
-
-        public static string GetSectionString(ProcessHandler.ProcessComponent type)
-        {
-            if (type == ProcessHandler.ProcessComponent.NULL_COMPONENT) return "";
-            return "." + type.ToString().ToLower().Replace("_m", "$").Replace("zero_", "0").Replace("_", " ");
         }
 
         public static string ReverseHexString(string hex)

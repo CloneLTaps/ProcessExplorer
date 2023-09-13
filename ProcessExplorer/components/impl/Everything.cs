@@ -4,7 +4,7 @@ namespace ProcessExplorer.components.impl
 {
     class Everything : SuperHeader
     {
-        public Everything(ProcessHandler processHandler, int length) : base(processHandler, ProcessHandler.ProcessComponent.EVERYTHING, length, 3) 
+        public Everything(ProcessHandler processHandler, int length) : base(processHandler, "everything", length, 3) 
         {
             StartPoint = 0;
             Size = null;

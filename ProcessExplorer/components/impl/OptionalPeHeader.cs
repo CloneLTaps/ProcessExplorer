@@ -8,7 +8,7 @@ namespace ProcessExplorer.components.impl
     {
         public bool validHeader, peThirtyTwoPlus;
 
-        public OptionalPeHeader(ProcessHandler processHandler, int startingPoint) : base(processHandler, ProcessHandler.ProcessComponent.OPITIONAL_PE_HEADER, 8, 3)
+        public OptionalPeHeader(ProcessHandler processHandler, int startingPoint) : base(processHandler, "optional pe header", 8, 3)
         {
             StartPoint = startingPoint; 
 

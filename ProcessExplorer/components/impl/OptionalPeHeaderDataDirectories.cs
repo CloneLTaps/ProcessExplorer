@@ -7,8 +7,7 @@ namespace ProcessExplorer.components.impl
         public int CertificateTablePointer { get; private set; }
         public int CertificateTableSize { get; private set; }
 
-        public OptionalPeHeaderDataDirectories(ProcessHandler processHandler, int startingPoint) 
-            : base(processHandler, ProcessHandler.ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES, 30, 3)
+        public OptionalPeHeaderDataDirectories(ProcessHandler processHandler, int startingPoint) : base(processHandler, "optional pe header data directories", 30, 3)
         {
             StartPoint = startingPoint;
 

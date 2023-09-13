@@ -4,8 +4,7 @@ namespace ProcessExplorer.components.impl
     class SectionBody : SuperHeader
     {
 
-        public SectionBody(ProcessHandler processHandler, int startingPoint, int endPoint, ProcessHandler.ProcessComponent sectionType) 
-            : base(processHandler, ProcessHandler.ProcessComponent.SECTION_BODY, 1, 3)
+        public SectionBody(ProcessHandler processHandler, int startingPoint, int endPoint, string sectionType) : base(processHandler, "section body", 1, 3)
         {
             Component = sectionType;
             StartPoint = startingPoint;

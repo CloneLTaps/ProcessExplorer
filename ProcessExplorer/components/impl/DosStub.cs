@@ -4,10 +4,9 @@ namespace ProcessExplorer.components
 {
     class DosStub : SuperHeader
     {
-        public DosStub(ProcessHandler processHandler, int startPoint) : base(processHandler, ProcessHandler.ProcessComponent.DOS_STUB, 1, 3) 
+        public DosStub(ProcessHandler processHandler, int startPoint) : base(processHandler, "dos stub", 1, 3) 
         {
-            if (processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.EVERYTHING).EndPoint 
-                <= processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.DOS_HEADER).EndPoint) 
+            if (processHandler.GetComponentFromMap("everything").EndPoint <= processHandler.GetComponentFromMap("dos header").EndPoint) 
             {   // This means our PE only consits of a PE Header 
                 FailedToInitlize = true;
                 return;

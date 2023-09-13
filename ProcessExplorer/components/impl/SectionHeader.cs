@@ -6,8 +6,8 @@ namespace ProcessExplorer.components.impl
     {
         public readonly int bodyStartPoint, bodyEndPoint;
 
-        public SectionHeader(ProcessHandler processHandler, int startingPoint, ProcessHandler.ProcessComponent sectionType) 
-            : base(processHandler, ProcessHandler.ProcessComponent.SECTION_HEADER, 10, 3)
+        public SectionHeader(ProcessHandler processHandler, int startingPoint, string sectionType) 
+            : base(processHandler, "section header", 10, 3)
         {
             StartPoint = startingPoint;
             Component = sectionType;

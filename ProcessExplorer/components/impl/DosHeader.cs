@@ -3,7 +3,7 @@ namespace ProcessExplorer.components
 {
     class DosHeader : SuperHeader
     {
-        public DosHeader(ProcessHandler processHandler) : base(processHandler, ProcessHandler.ProcessComponent.DOS_HEADER, 19, 3)
+        public DosHeader(ProcessHandler processHandler) : base(processHandler, "dos header", 19, 3)
         {
             string[] firstHexLine = GetFilesHex(0, 1).Split(' ');
             if (firstHexLine[0].ToLower() != "4d" || firstHexLine[1].ToLower() != "5a")
