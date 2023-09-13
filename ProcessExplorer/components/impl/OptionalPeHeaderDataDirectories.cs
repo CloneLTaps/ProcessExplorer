@@ -1,8 +1,12 @@
-﻿
+﻿using System.Globalization;
+
 namespace ProcessExplorer.components.impl
 {
     class OptionalPeHeaderDataDirectories : SuperHeader
     {
+        public int CertificateTablePointer { get; private set; }
+        public int CertificateTableSize { get; private set; }
+
         public OptionalPeHeaderDataDirectories(ProcessHandler processHandler, int startingPoint) 
             : base(processHandler, ProcessHandler.ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES, 30, 3)
         {
@@ -44,6 +48,9 @@ namespace ProcessExplorer.components.impl
             Size[29] = 8; Desc[29] = "Reserved (8 bytes) reserved for future use must be 0.";
 
             SetEndPoint();
+
+            CertificateTablePointer = int.Parse(GetData(8, 1, ProcessHandler.DataType.HEX, true, true), NumberStyles.HexNumber);
+            CertificateTableSize = int.Parse(GetData(9, 1, ProcessHandler.DataType.HEX, true, true), NumberStyles.HexNumber);
         }
 
         public override void OpenForm(int row)

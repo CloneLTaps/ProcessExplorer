@@ -17,18 +17,10 @@ namespace ProcessExplorer
         private CharacterSet selectedCharacter = CharacterSet.ASCII;
         private ProcessHandler processHandler;
 
-            //
-            // replaceAllCheckBox
-            //
-/*            this.replaceAllCheckBox.AutoSize = false;
-            this.replaceAllCheckBox.Name = "replaceAllCheckBox";
-            this.replaceAllCheckBox.Text = "Replace All";
-            this.replaceAllCheckBox.Size = new System.Drawing.Size(90, 21);
-            this.replaceAllCheckBox.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);*/
         public Form1()
         {
-            //replaceAllCheckBox = new ToolStripControlHost(new CheckBox());
             InitializeComponent();
+            Text = "Process Explorer";
 
             fileContextMenu.Items.Add("Open");
             fileContextMenu.Items.Add("Save");
@@ -54,8 +46,8 @@ namespace ProcessExplorer
             dataGridView.AlternatingRowsDefaultCellStyle.BackColor = SystemColors.ControlDark;
             dataGridView.RowHeadersDefaultCellStyle.BackColor = SystemColors.ControlDark;
             dataGridView.CellFormatting += DataGridView_CellFormatting;
-
         }
+
         private void Form1_Load(object sender, EventArgs e)
         {
             Console.WriteLine("Starting Process Explorer");
@@ -196,6 +188,9 @@ namespace ProcessExplorer
             TreeNode peHeaderNode = new TreeNode("PE Header");
             TreeNode optionalPeHeaderNode = new TreeNode("Optional PE Header");
 
+            TreeNode certifcationTable = new TreeNode("Certificate Table");
+            bool addCertifcationTable = false;
+
             SuperHeader optionalPeHeader = processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.OPITIONAL_PE_HEADER);
             if (optionalPeHeader != null && !optionalPeHeader.FailedToInitlize) peHeaderNode.Nodes.Add(optionalPeHeaderNode);
 
@@ -206,6 +201,10 @@ namespace ProcessExplorer
                 peHeaderNode.Nodes.Add(optionalPeHeader64Node);
                 TreeNode optionalPeHeaderDataDirectories = new TreeNode("Optional PE Header Data Directories");
                 peHeaderNode.Nodes.Add(optionalPeHeaderDataDirectories);
+
+                OptionalPeHeaderDataDirectories dataDirectories = (OptionalPeHeaderDataDirectories) processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES);
+                if (dataDirectories != null && !dataDirectories.FailedToInitlize && dataDirectories.CertificateTablePointer > 0 && dataDirectories.CertificateTableSize > 0)
+                    addCertifcationTable = true;
             }
 
             TreeNode optionalPeHeader32Node = new TreeNode("Optional PE Header 32");
@@ -215,6 +214,10 @@ namespace ProcessExplorer
                 peHeaderNode.Nodes.Add(optionalPeHeader32Node);
                 TreeNode optionalPeHeaderDataDirectories = new TreeNode("Optional PE Header Data Directories");
                 peHeaderNode.Nodes.Add(optionalPeHeaderDataDirectories);
+
+                OptionalPeHeaderDataDirectories dataDirectories = (OptionalPeHeaderDataDirectories)processHandler.GetComponentFromMap(ProcessHandler.ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES);
+                if (dataDirectories != null && !dataDirectories.FailedToInitlize && dataDirectories.CertificateTablePointer > 0 && dataDirectories.CertificateTableSize > 0)
+                    addCertifcationTable = true;
             }
 
             TreeNode mainSectionNode = new TreeNode("Sections");
@@ -254,7 +257,9 @@ namespace ProcessExplorer
             if (peHeader != null && !peHeader.FailedToInitlize) rootNode.Nodes.Add(peHeaderNode);
 
             if(mainSectionNode.Nodes.Count > 0) rootNode.Nodes.Add(mainSectionNode);
-            //Next I need to check for sections and add them to the root node
+            if(addCertifcationTable) rootNode.Nodes.Add(certifcationTable);
+
+            // Add all of the nodes to the tree
             treeView.Nodes.Add(rootNode);
 
             // This will auto check the following settings on startup
@@ -389,6 +394,8 @@ namespace ProcessExplorer
                 if (selected == selectedComponent) return;
                 selectedComponent = selected;
 
+                Console.WriteLine("SelectedComp:" + selectedComponent.ToString() + " Row:" + newRowCount + " NodeText:" + nodeText.ToLower() );
+
                 if(processHandler.ReterunToTop || newRowCount > previousRowCount) dataGridView.FirstDisplayedScrollingRowIndex = 0;
 
                 TriggerRedraw();
@@ -506,7 +513,7 @@ namespace ProcessExplorer
                     SuperHeader comp = map.Value;
                     if (comp.Component != ProcessHandler.ProcessComponent.EVERYTHING && comp.StartPoint <= offset && comp.EndPoint >= offset)
                     {
-                        processHandler.RecalculateHeaders(comp);
+                        //processHandler.RecalculateHeaders(comp);
                         TriggerRedraw();
                         return;
                     }

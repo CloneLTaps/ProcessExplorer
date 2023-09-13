@@ -40,7 +40,7 @@ namespace ProcessExplorer
             return componentMap[comp];
         }
 
-        public void RecalculateHeaders(SuperHeader comp)
+/*        public void RecalculateHeaders(SuperHeader comp)
         {
             if (comp.Component == ProcessComponent.DOS_HEADER) componentMap[ProcessComponent.DOS_HEADER] = new DosHeader(this);
             else if (comp.Component == ProcessComponent.DOS_STUB) componentMap[ProcessComponent.DOS_STUB] = new DosStub(this, GetComponentFromMap(ProcessComponent.DOS_HEADER).EndPoint);
@@ -61,11 +61,8 @@ namespace ProcessExplorer
                         new OptionalPeHeaderDataDirectories(this, GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER_32).EndPoint);
                 }
             }
-            else
-            {
-                AssignSectionHeaders(HeaderEndPoint);
-            }
-        }
+            else AssignSectionHeaders(HeaderEndPoint);
+        }*/
 
         public ProcessHandler(FileStream file)
         {
@@ -86,8 +83,6 @@ namespace ProcessExplorer
             FilesDecimal = filesDecimal;
             FilesBinary = filesBinary;
 
-            Console.WriteLine("HexLength:" + FilesHex.GetLength(0) + " DecimalLength:" + FilesDecimal.GetLength(0));
-
             componentMap.Add(ProcessComponent.EVERYTHING, new Everything(this, filesHex.GetLength(0)));
             if (GetComponentFromMap(ProcessComponent.EVERYTHING).EndPoint <= 2) return;            // The file is esentially blank  
 
@@ -106,27 +101,33 @@ namespace ProcessExplorer
             int endPoint;
             if (((OptionalPeHeader)GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER)).validHeader)
             { // This means we most likely have either 64 or 32 bit option headers
-                Console.WriteLine("Valid header!");
                 if (((OptionalPeHeader)GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER)).peThirtyTwoPlus)
                 {   // This means our optional header is valid and that we are using 64 bit headers
                     componentMap.Add(ProcessComponent.OPITIONAL_PE_HEADER_64, new OptionalPeHeader64(this, GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER).EndPoint));
-                    componentMap.Add(ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES, 
-                        new OptionalPeHeaderDataDirectories(this, GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER_64).EndPoint));
+                    OptionalPeHeaderDataDirectories dataDirectories = new OptionalPeHeaderDataDirectories(this, GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER_64).EndPoint);
+                    componentMap.Add(ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES, dataDirectories);
+
+                    if(dataDirectories.CertificateTablePointer > 0 && dataDirectories.CertificateTableSize > 0)
+                    {
+                        componentMap.Add(ProcessComponent.CERTIFICATE_TABLE, new CertificationTable(this, dataDirectories.CertificateTablePointer, dataDirectories.CertificateTableSize));
+                    }
                 }
                 else
                 {
                     componentMap.Add(ProcessComponent.OPITIONAL_PE_HEADER_32, new OptionalPeHeader32(this, GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER).EndPoint));
-                    componentMap.Add(ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES,
-                        new OptionalPeHeaderDataDirectories(this, GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER_32).EndPoint));
+                    OptionalPeHeaderDataDirectories dataDirectories = new OptionalPeHeaderDataDirectories(this, GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER_32).EndPoint);
+                    componentMap.Add(ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES, dataDirectories);
+
+                    if (dataDirectories.CertificateTablePointer > 0 && dataDirectories.CertificateTableSize > 0)
+                    {
+                        componentMap.Add(ProcessComponent.CERTIFICATE_TABLE, new CertificationTable(this, dataDirectories.CertificateTablePointer, dataDirectories.CertificateTableSize));
+                    }
                 }
                 endPoint = GetComponentFromMap(ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES).EndPoint;
             }
-            else
-            {
-                endPoint = GetComponentFromMap(ProcessComponent.PE_HEADER).EndPoint;
-            }
+            else endPoint = GetComponentFromMap(ProcessComponent.PE_HEADER).EndPoint;
             HeaderEndPoint = endPoint;
-            Console.WriteLine("Start Sections HeaderEndPoint:" + HeaderEndPoint);
+
             // Recursively adds sections
             AssignSectionHeaders(endPoint);
         }
@@ -383,7 +384,7 @@ namespace ProcessExplorer
         public enum ProcessComponent
         {
             EVERYTHING, DOS_HEADER, DOS_STUB, PE_HEADER, OPITIONAL_PE_HEADER, OPITIONAL_PE_HEADER_64, OPITIONAL_PE_HEADER_32, OPITIONAL_PE_HEADER_DATA_DIRECTORIES,
-            SECTION_BODY, SECTION_HEADER, NULL_COMPONENT,
+            SECTION_BODY, SECTION_HEADER, CERTIFICATE_TABLE, NULL_COMPONENT,
 
             TEXT_SECTION_HEADER, TEXT_SECTION_BODY,     // Executable code
             DATA_SECTION_HEADER, DATA_SECTION_BODY,     // Initlized data
@@ -424,6 +425,9 @@ namespace ProcessExplorer
             ROBASE_SECTION_HEADER, ROBASE_SECTION_BODY, // Contains read-only base relocation information.
             RANDOM_SECTION_HEADER, RANDOM_SECTION_BODY, // Used in some security features and mechanisms to enhance program randomization.
             BOLT_SECTION_HEADER, BOLT_SECTION_BODY,     // Used by the Binary Optimization and Layout Tool (BOLT) for performance optimization.
+
+            GFIDS_SECTION_HEADER, GFIDS_SECTION_BODY,   // Used in dll's when a function in one dll is forwarding to another dll.
+            ZERO_ZERO_CFG_SECTION_HEADER, ZERO_ZERO_CFG_SECTION_BODY   
         }
 
         public enum OffsetType
@@ -448,6 +452,7 @@ namespace ProcessExplorer
                 case "optional pe header 64": return ProcessComponent.OPITIONAL_PE_HEADER_64;
                 case "optional pe header 32": return ProcessComponent.OPITIONAL_PE_HEADER_32;
                 case "optional pe header data directories": return ProcessComponent.OPITIONAL_PE_HEADER_DATA_DIRECTORIES;
+                case "certificate table": return ProcessComponent.CERTIFICATE_TABLE;
 
                 case ".text section header": return ProcessComponent.TEXT_SECTION_HEADER;
                 case ".text section body": return ProcessComponent.TEXT_SECTION_BODY;
@@ -521,6 +526,11 @@ namespace ProcessExplorer
                 case ".random section body": return ProcessComponent.RANDOM_SECTION_BODY;
                 case ".bolt section header": return ProcessComponent.BOLT_SECTION_HEADER;
                 case ".bolt section body": return ProcessComponent.BOLT_SECTION_BODY;
+
+                case ".gfids section header": return ProcessComponent.GFIDS_SECTION_HEADER;
+                case ".gfids section body": return ProcessComponent.GFIDS_SECTION_BODY;
+                case ".00cfg section header": return ProcessComponent.ZERO_ZERO_CFG_SECTION_HEADER;
+                case ".00cfg section body": return ProcessComponent.ZERO_ZERO_CFG_SECTION_BODY;
             }
             return ProcessComponent.NULL_COMPONENT;
         }

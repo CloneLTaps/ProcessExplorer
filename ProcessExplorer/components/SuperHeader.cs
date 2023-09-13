@@ -267,7 +267,7 @@ namespace ProcessExplorer.components
         public static string GetSectionString(ProcessHandler.ProcessComponent type)
         {
             if (type == ProcessHandler.ProcessComponent.NULL_COMPONENT) return "";
-            return "." + type.ToString().ToLower().Replace("_m", "$").Replace("_", " ");
+            return "." + type.ToString().ToLower().Replace("_m", "$").Replace("zero_", "0").Replace("_", " ");
         }
 
         public static string ReverseHexString(string hex)

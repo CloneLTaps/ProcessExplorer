@@ -28,10 +28,10 @@ namespace ProcessExplorer.components
                 {
                     string str = hexArray[i];
                     int rowSize = row - startingPoint;
-                    
+
                     if (str == "50")
                     {
-                        offset = (row + i) * 16;
+                        offset = (row * 16) + i;
                         signature = "50";
                     }
                     else signature += str;
