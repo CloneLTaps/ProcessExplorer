@@ -27,3 +27,46 @@ consequences. The only other thing left to understand is the Settings button. Th
 notice a "Display offsets in hex" option which when checked just means offsets will always be shown in hex no matter if you switch to decimal or binary. Next you will see the "Return to top" option
 which just means you will be returned to the top of the section when switching between different sections. Lastly, you will see the "Treat null as '.'" option. This is used with the replace button 
 and allows you to type a '.' in when you are trying to replace a null character. This is useful because you often find ASCII characters separated by 00.
+
+# How PE's work
+PE stands for 'Portable Executable' and is a file format designed for Windows that works with both exe's 'exectuables' and dll's 'dynamic link libraries'. In fact the when anaylzing the headers of these
+two, their structures will apear very similar. The main way of telling the difference is by going to the PE's general pe header and then navigating to the characteristics section. Clicking on this you can scroll 
+down and look to see if the 'IMAGE_FILE_DLL' option is selected. 
+
+When viewing the headers of a PE the first two things you will notice is the dos header and the dos stub. These are both legacy headers designed for the ms dos days with the only real useful info being at the bottom
+of the dos header. Particually the 'e_lfanew' field which represents the file offset in hex to the start of the PE Header. Also please keep in mind PE's will be stored in little-endian meaning the the least signtificant
+bytes will be stored first. However, we need to read this data in big-endian to do this first look at the size of the field which in our case is 4 bytes. Next flip the order of each byte. For example 08 10 00 00
+would turn into 00 00 10 08. Once cleaned up we can see it is actually 0x108 which defines the file offset to the start of our PE Header. The rest of the bytes to that will be the dos header which is not used in todays
+world. Sometimes you can also find Rich Headers between the Dos Header and the PE Header but this is often just treated as an extension to the Dos Header since its non standard. 
+
+## PE Headers
+The start of the PE Header always start with PE followed up by 2 null termianting bytes. The hex takes the appearnce of 50 45 00 00. Please keep in mind ASCII characters are read in little-endian form which is unique in the 
+sense that most fields are read in big-endian. Next you will notice the Machine field which just contains the target machines arcitexture. After that you will notice the NumberOfSections field which contains the total amount 
+of sections located inside this PE. You will then notice a few more fields most notablly being the SizeOfOptionalHeader field and the Characteristics field which was mentioned earlier. When SizeOfOptionalHeader has a size 
+greater than 0 we know that optional headers are present along with their size.
+
+## Optional PE Headers
+Even though the word "option" is used here you will find in the vast majoirty of all PE cases these will be present. Additonally Optional PE Headers are often broken down into 3 types. Firstly, the main Optional PE Header 
+which contains 8 fields. Starting off we have the Magic field where 20B means we have a 64 bit header while 10B means we have a 32 bit header (this will be relavent in the next header). Going down a bit the next key field 
+is the SizeOfCode field which determines the size of the '.text' section. In general the '.text' section is what holds all of the PE's exectuiable code. Next up is the SizeOfInitializedData field which repsents
+the size of initilized data inside the '.data' section. In General the '.data' section us used to contain non volatile mutable data such as global and static variables. After that the SizeOfUninitializedData field 
+contains the uninitlized data inside the '.data' section. Next up is the AddressOfEntryPoint field which represents the RVA (relative virtual address). This often points to the virtual memory address that contains
+our main function in something like C/C++. Lastly, we have the BaseOfCode field which is the RVA to the start of the '.text' section. Also in case you are curious these are often relative to the Image Base.
+
+## Optional PE Headers 64 / 32
+Based on the Magic field from the previous header this will either be formated in 64 bit or 32 bit. The primary difference between these is that 32 bit has one extra field at the start BaseOfData which is just the RVA
+to the start of the '.data' section and secondly most of the 8 byte fields located in the 64 bit version are instead in 4 bytes in the 32 bit version.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
