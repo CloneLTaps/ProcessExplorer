@@ -16,7 +16,7 @@ namespace ProcessExplorer.components.impl
             Size = new int[RowSize];
             Size[0] = 8; Desc[0] = "Name (8 bytes) name of this section.";
             Size[1] = 4; Desc[1] = "Virtual Size (4 bytes) size of the section in memory.";
-            Size[2] = 4; Desc[2] = "Virtual Address (4 byts) relative virtual address of this section in memory.";
+            Size[2] = 4; Desc[2] = "Virtual Address (4 bytes) relative virtual address of this section in memory.";
             Size[3] = 4; Desc[3] = "Size of Raw Data (4 bytes) size of the section on disk.";
             Size[4] = 4; Desc[4] = "Pointer to Raw Data (4 bytes) file offset to the begining of the section.";
             Size[5] = 4; Desc[5] = "Pointer to Relocations (4 bytes) file offset to the relocations entires for this section.";

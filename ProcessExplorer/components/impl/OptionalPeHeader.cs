@@ -18,8 +18,8 @@ namespace ProcessExplorer.components.impl
             Size[1] = 1; Desc[1] = "MajorLinkerVersion (1 byte) primary version number.";
             Size[2] = 1; Desc[2] = "MinorLinkerVersion (1 byte) secondary version number.";
             Size[3] = 4; Desc[3] = "SizeOfCode (4 bytes) size of the .text section.";
-            Size[4] = 4; Desc[4] = "SizeOfInitializedData (4 bytes) size of initialized .data section.";
-            Size[5] = 4; Desc[5] = "SizeOfUninitializedData (4 bytes) size of uninitialized .data section.";
+            Size[4] = 4; Desc[4] = "SizeOfInitializedData (4 bytes) size of initialized data inside of the .data section.";
+            Size[5] = 4; Desc[5] = "SizeOfUninitializedData (4 bytes) size of uninitialized data inside of the .data section.";
             Size[6] = 4; Desc[6] = "AddressOfEntryPoint (4 bytes) relative virtual address entry point.";
             Size[7] = 4; Desc[7] = "BaseOfCode (4 bytes) points to starting RVA of the .text section.";
 

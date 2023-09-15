@@ -73,6 +73,7 @@ namespace ProcessExplorer.components.impl
                 }
             }
             else if (row == 9)
+
             {
                 string[] options = { "0x00000000 - No version information", "0x00000004 - Windows 95", "0x00100004 - Windows 98", "0x00000005 - Windows 2000",
                 "0x00100005 - Windows XP", "0x00200005 - Windows XP x64", "0x00000006 - Windows Vista", "0x00100006 - Windows 7", "0x00200006 - Windows 8",
