@@ -5,6 +5,10 @@ using System.IO;
 using ProcessExplorer.components;
 using ProcessExplorer.components.impl;
 using System.Collections.Generic;
+using Newtonsoft.Json;
+using System.Collections.Concurrent;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ProcessExplorer
 {
@@ -12,12 +16,9 @@ namespace ProcessExplorer
     {
         public string FileName { get; private set; }
 
-        public bool RemoveZeros { get; set; }
+        public string FilePath { get; private set; }
 
-        public bool TreatNullAsPeriod { get; set; }
-        public bool OffsetsInHex { get; set; }
-
-        public bool ReterunToTop { get; set; }
+        public Settings Settings { get; private set; }
 
         public bool Is64Bit { get; set; }
 
@@ -28,6 +29,10 @@ namespace ProcessExplorer
         // These following fields are all only initlized inside the constructor and thus marked 'readonly' 
         public readonly Dictionary<string, SuperHeader> componentMap = new Dictionary<string, SuperHeader>();
         private readonly FileStream file;
+
+        private readonly BlockingCollection<Settings> settingsQueue = new BlockingCollection<Settings>();
+        private readonly CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+        private readonly Task writerTask;
 
         public string[,] FilesHex { get; private set; }
         public string[,] FilesDecimal { get; private set; }
@@ -43,10 +48,13 @@ namespace ProcessExplorer
         public ProcessHandler(FileStream file)
         {
             if (file == null) return;
+
             this.file = file;
             FileName = new FileInfo(file.Name).Name;
-
             Offset = OffsetType.FILE_OFFSET;
+
+            HandleSettingsFileIO();
+            writerTask = Task.Run(() => FileWriterTaskMethod(), cancellationTokenSource.Token);
 
             // This specifies that the array will be 16 across and (file.Length / 16) down
             // I am precomputing these values so that I dont have to recompute them when the user switches windows or modes
@@ -54,7 +62,7 @@ namespace ProcessExplorer
             string[,] filesDecimal = new string[(int)Math.Ceiling(file.Length / 16.0), 2];
             string[,] filesBinary = new string[(int)Math.Ceiling(file.Length / 16.0), 2];
 
-            PopulateArrays(filesHex, filesDecimal, filesBinary); // Passes a reference to the memory address of the above arrays instead of their values
+            PopulateArrays(filesHex, filesDecimal, filesBinary); // Passes a reference to the memory address of the above arrays for them to be populated
             FilesHex = filesHex;
             FilesDecimal = filesDecimal;
             FilesBinary = filesBinary;
@@ -109,7 +117,6 @@ namespace ProcessExplorer
             AssignSectionHeaders(endPoint, int.MaxValue, peHeader.SectionAmount, 0);
         }
 
-        /* This will return the new end point and it will return -1 if we reached the last section */
         private void AssignSectionHeaders(int startPoint, int stoppingPoint, int sectionAmount, int sectionCount)
         {
             int initialSkipAmount = startPoint % 16; // The amount we need to skip before we reach our target byte 
@@ -138,7 +145,7 @@ namespace ProcessExplorer
                             headerNameStart = currentOffset;
                             ++headerNameCount;
                         }
-                        else if(++headerNameCount < 8)
+                        else if(++headerNameCount < 8) // The Name field in section headers are 8 bytes long
                         {
                             if(headerNameCount < 4 && asciiChar == ' ')
                             {   // If the first few characters are not valid ASCII then we know its not a section header
@@ -281,7 +288,7 @@ namespace ProcessExplorer
                     .GroupBy(x => x.Index / 2).Select(group => new string(group.Select(x => x.Char).ToArray())).ToArray();
                
                 values[0, 0] = string.Join(" ", bytes); // Hex
-                values[0, 1] = string.Join(" ", Array.ConvertAll(bytes, hex => long.Parse(hex, System.Globalization.NumberStyles.HexNumber))); //string.Join(" ", bytes.Select(hex => byte.Parse(hex, System.Globalization.NumberStyles.HexNumber))); // Decimal
+                values[0, 1] = string.Join(" ", Array.ConvertAll(bytes, hex => long.Parse(hex, System.Globalization.NumberStyles.HexNumber))); // Decimal
                 values[0, 2] = string.Join(" ", bytes.Select(hexByte => Convert.ToString(long.Parse(hexByte, System.Globalization.NumberStyles.HexNumber), 2).PadLeft(8, '0'))); // Binary
             }
             else if (decimalChecked)
@@ -381,6 +388,95 @@ namespace ProcessExplorer
             catch (Exception ex)
             {
                 Console.WriteLine("An error occurred: " + ex.Message);
+            }
+        }
+
+
+        private void CreateSettingsFile()
+        {
+            Settings = new Settings(true, true, false, true);
+            string json = JsonConvert.SerializeObject(Settings, Formatting.Indented);
+            File.WriteAllText(FilePath, json);
+        }
+
+        private void HandleSettingsFileIO()
+        {
+            FilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
+
+            try
+            {
+                if (!File.Exists(FilePath))
+                {
+                    CreateSettingsFile(); return;
+                }
+
+                string settingsContents = File.ReadAllText(FilePath);
+                if (settingsContents == null || settingsContents == "")
+                {
+                    CreateSettingsFile(); return;
+                }
+
+                Settings deserializedObject = JsonConvert.DeserializeObject<Settings>(settingsContents);
+                if (deserializedObject == null)
+                {
+                    CreateSettingsFile(); return;
+                }
+
+                Settings = (Settings)deserializedObject;
+                return;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("An error occurred: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        ///  This should be called when deleting this ProcessHandler objects. Call this will stop and clean up resources
+        ///   for the file writing thread.
+        /// </summary>
+        public void StopThread()
+        {
+            cancellationTokenSource.Cancel();
+        }
+
+        public void UpdateSettingsFile(bool async)
+        {
+            if(!async)
+            {
+                string json = JsonConvert.SerializeObject(Settings, Formatting.Indented);
+                File.WriteAllText(FilePath, json);
+                return;
+            }
+
+            // This means our task has been canceled (most likely opening a new file)
+            if (writerTask == null || cancellationTokenSource.IsCancellationRequested) return;
+
+            settingsQueue.Add(Settings);
+        }
+
+        /// <summary>
+        ///  This should only be called from 'writerTask = Task.Run' inside of Processhandlers constructor. This is method is
+        ///   designed to be ran on a seperate thread and uses a producer consumer scheme. 
+        /// </summary>
+        private void FileWriterTaskMethod()
+        {
+            try
+            {
+                foreach (var newSettings in settingsQueue.GetConsumingEnumerable(cancellationTokenSource.Token))
+                {
+                    // Check for cancellation
+                    if (cancellationTokenSource.Token.IsCancellationRequested) return;
+
+                    if (newSettings == null) continue;
+
+                    string json = JsonConvert.SerializeObject(Settings, Formatting.Indented);
+                    File.WriteAllText(FilePath, json);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                
             }
         }
 

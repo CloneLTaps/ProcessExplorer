@@ -104,21 +104,27 @@ namespace ProcessExplorer
 
         private void Settings_Click(object sender, EventArgs e)
         {
+            if (processHandler == null) return;
+
             ToolStripMenuItem settingItem = sender as ToolStripMenuItem;
             settingItem.Checked = !settingItem.Checked; // Toggle checked state
             
             switch(settingItem.Text)
-            {
-                case "Display offsets in hex": processHandler.OffsetsInHex = settingItem.Checked;
+            {   // This will also automatically update the settings file asynchronously in case this program gets randomly terminated
+                case "Display offsets in hex": processHandler.Settings.OffsetsInHex = settingItem.Checked;
+                    processHandler.UpdateSettingsFile(true);
                     TriggerRedraw();
                     break;
-                case "Remove extra zeros": processHandler.RemoveZeros = settingItem.Checked;
+                case "Remove extra zeros": processHandler.Settings.RemoveZeros = settingItem.Checked;
+                    processHandler.UpdateSettingsFile(true);
                     TriggerRedraw();
                     break;
-                case "Return to top": processHandler.ReterunToTop = settingItem.Checked;
+                case "Return to top": processHandler.Settings.ReterunToTop = settingItem.Checked;
+                    processHandler.UpdateSettingsFile(true);
                     TriggerRedraw();
                     break;
-                case "Treat null as '.'": processHandler.TreatNullAsPeriod = settingItem.Checked;
+                case "Treat null as '.'": processHandler.Settings.TreatNullAsPeriod = settingItem.Checked;
+                    processHandler.UpdateSettingsFile(true);
                     break;
             }
         }
@@ -267,11 +273,13 @@ namespace ProcessExplorer
                 {
                     switch(menuItem.Text)
                     {
-                        case "Remove extra zeros": menuItem.Checked = processHandler.RemoveZeros = true;
+                        case "Remove extra zeros": menuItem.Checked = processHandler.Settings.RemoveZeros;
                             break;
-                        case "Return to top": menuItem.Checked = processHandler.ReterunToTop = true;
+                        case "Return to top": menuItem.Checked = processHandler.Settings.ReterunToTop;
                             break;
-                        case "Treat null as '.'": menuItem.Checked = processHandler.TreatNullAsPeriod = true;
+                        case "Treat null as '.'": menuItem.Checked = processHandler.Settings.TreatNullAsPeriod;
+                            break;
+                        case "Display offsets in hex": menuItem.Checked = processHandler.Settings.OffsetsInHex;
                             break;
                     }
                 }
@@ -392,7 +400,7 @@ namespace ProcessExplorer
                 if (selected == selectedComponent) return;
                 selectedComponent = selected;
 
-                if(processHandler.ReterunToTop || newRowCount > previousRowCount) dataGridView.FirstDisplayedScrollingRowIndex = 0;
+                if(processHandler.Settings.ReterunToTop || newRowCount > previousRowCount) dataGridView.FirstDisplayedScrollingRowIndex = 0;
 
                 TriggerRedraw();
                 Form1_Resize(this, EventArgs.Empty);
@@ -461,7 +469,7 @@ namespace ProcessExplorer
 
         private bool ParseAscii(string hexByte, out byte asciiByte)
         {
-            if (processHandler.TreatNullAsPeriod && hexByte == "00")
+            if (processHandler.Settings.TreatNullAsPeriod && hexByte == "00")
             {
                 asciiByte = (byte)'.';
                 return true;
@@ -475,7 +483,7 @@ namespace ProcessExplorer
 
             foreach (char c in ascii)
             {
-                hexString.AppendFormat("{0:X2} ", processHandler.TreatNullAsPeriod ? c == 46 ? 0 : (int)c : (int) c);
+                hexString.AppendFormat("{0:X2} ", processHandler.Settings.TreatNullAsPeriod ? c == 46 ? 0 : (int)c : (int) c);
             }
             return hexString.ToString().Trim();
         }

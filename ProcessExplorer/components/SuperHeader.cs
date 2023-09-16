@@ -60,7 +60,7 @@ namespace ProcessExplorer.components
                 string bigEndian = string.Concat(hexPairs);
 
                 // Check if the result is all "0"s and convert to a single "0"
-                if (processHandler.RemoveZeros && (bigEndian.Trim('0') == "" || (bigEndian = bigEndian.TrimStart('0')).Length == 0)) bigEndian = "0";
+                if (processHandler.Settings.RemoveZeros && (bigEndian.Trim('0') == "" || (bigEndian = bigEndian.TrimStart('0')).Length == 0)) bigEndian = "0";
                 return bigEndian;
             }
 
@@ -73,7 +73,7 @@ namespace ProcessExplorer.components
                     string firstPart = hexPairs[index * 2 + 1];
                     string secondPart = hexPairs[index * 2];
                     string combined = firstPart + secondPart;
-                    if (processHandler.RemoveZeros)
+                    if (processHandler.Settings.RemoveZeros)
                     {
                         if (secondPart == "00" && firstPart == "00") combined = "0";
                         else if ((combined = combined.TrimStart('0')).Length == 0) combined = "0";
@@ -91,7 +91,7 @@ namespace ProcessExplorer.components
 
             if (Component == "everything")
             {
-                if(column == 0 && processHandler.OffsetsInHex) return GetCorrectFormat(row, column, ProcessHandler.DataType.HEX, bigEndian);
+                if(column == 0 && processHandler.Settings.OffsetsInHex) return GetCorrectFormat(row, column, ProcessHandler.DataType.HEX, bigEndian);
             }
             int firstRow = (int)Math.Floor(StartPoint / 16.0);  // First row of our data
 
@@ -102,7 +102,7 @@ namespace ProcessExplorer.components
             {
                 if (column == 0) {
                     int off = row * 16;
-                    return GetOffset(inFileOffset ? off + StartPoint : off, processHandler.OffsetsInHex ? ProcessHandler.DataType.HEX : dataType);
+                    return GetOffset(inFileOffset ? off + StartPoint : off, processHandler.Settings.OffsetsInHex ? ProcessHandler.DataType.HEX : dataType);
                 }
                 return GetCorrectFormat(row + firstRow, column, dataType, bigEndian);
             }
@@ -121,7 +121,7 @@ namespace ProcessExplorer.components
 
             if (column == 0)
             {
-                return GetOffset((inFileOffset ? relativeOfffset + StartPoint : relativeOfffset), processHandler.OffsetsInHex ? ProcessHandler.DataType.HEX : dataType);  // This means we just need to return the offset
+                return GetOffset((inFileOffset ? relativeOfffset + StartPoint : relativeOfffset), processHandler.Settings.OffsetsInHex ? ProcessHandler.DataType.HEX : dataType);  // This means we just need to return the offset
             }
             relativeOfffset += StartPoint % 16;
 

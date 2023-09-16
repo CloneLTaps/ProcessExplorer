@@ -1,0 +1,6 @@
+{
+  "RemoveZeros": true,
+  "TreatNullAsPeriod": true,
+  "OffsetsInHex": false,
+  "ReterunToTop": true
+}

@@ -16,8 +16,9 @@ Filename: "{app}\CheckDotNetVersion.bat"; Parameters: ""; Check: DotNetVersionIs
 [Files]
 Source: "ProcessExplorer\bin\Release\net5.0-windows\ProcessExplorer.exe"; DestDir: "{app}"
 Source: "ProcessExplorer\bin\Release\net5.0-windows\ProcessExplorer.dll"; DestDir: "{app}"  
+Source: "ProcessExplorer\bin\Release\net5.0-windows\Newtonsoft.Json.dll"; DestDir: "{app}"  
 Source: "ProcessExplorer\bin\Release\net5.0-windows\ProcessExplorer.runtimeconfig.json"; DestDir: "{app}"
-Source: "ProcessExplorer\config.txt"; DestDir: "{app}"
+Source: "ProcessExplorer\settings.json"; DestDir: "{app}"
 Source: "CheckDotNetVersion.bat"; DestDir: "{app}"
 Source: "README.md"; DestDir: "{app}\Docs"; Components: Docs
 
@@ -46,13 +47,13 @@ begin
   begin
     if ErrorCode <> 0 then
     begin
-      MsgBox('Required .NET version is not installed.', mbError, MB_OK);
+      MsgBox('Required .NET version 5 or greater is not installed.', mbError, MB_OK);
       Result := False;
     end;
   end
   else
   begin
-    MsgBox('Error running .NET version check.', mbError, MB_OK);
+    MsgBox('Error running .NET version 5 or greater check.', mbError, MB_OK);
     Result := False;
   end;
 end;
