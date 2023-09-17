@@ -3,12 +3,11 @@ using System;
 
 namespace ProcessExplorer.components.impl
 {
-
-    class OptionalPeHeader : SuperHeader
+    class OptionalPeHeader : PluginInterface.SuperHeader
     {
         public bool validHeader, peThirtyTwoPlus;
 
-        public OptionalPeHeader(ProcessHandler processHandler, int startingPoint) : base(processHandler, "optional pe header", 8, 3)
+        public OptionalPeHeader(PluginInterface.DataStorage dataStorage, int startingPoint) : base("optional pe header", 8, 3)
         {
             StartPoint = startingPoint; 
 
@@ -27,13 +26,13 @@ namespace ProcessExplorer.components.impl
 
             // if the magic bit does not equal 0x10B or 0x20B then this is not a valid optional header
             // if the magic bit is equal to 0x10B then we have a 32 bit header while 0x20B is for 64 bit
-            string hex = OptionsForm.GetBigEndianValue(GetData(0, 1, ProcessHandler.DataType.HEX, false, true));
+            string hex = GetBigEndianValue(GetData(0, 1, PluginInterface.Enums.DataType.HEX, false, true, dataStorage));
             int magicBit = int.Parse(hex, NumberStyles.HexNumber);
             if (magicBit == 0x10B || magicBit == 0x20B) validHeader = true;
             peThirtyTwoPlus = (magicBit == 0x20B);
         }
 
-        public override void OpenForm(int row)
+        public override void OpenForm(int row, PluginInterface.DataStorage dataStorage)
         {
             return;
         }

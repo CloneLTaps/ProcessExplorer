@@ -42,4 +42,15 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="plugins\" />
+    <Folder Include="plugin_handler\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="PluginInterface">
+      <HintPath>..\PluginInterface\bin\Release\net5.0\PluginInterface.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>

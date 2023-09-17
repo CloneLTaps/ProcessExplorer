@@ -2,12 +2,12 @@
 
 namespace ProcessExplorer.components.impl
 {
-    class OptionalPeHeaderDataDirectories : SuperHeader
+    class OptionalPeHeaderDataDirectories : PluginInterface.SuperHeader
     {
         public int CertificateTablePointer { get; private set; }
         public int CertificateTableSize { get; private set; }
 
-        public OptionalPeHeaderDataDirectories(ProcessHandler processHandler, int startingPoint) : base(processHandler, "optional pe header data directories", 30, 3)
+        public OptionalPeHeaderDataDirectories(PluginInterface.DataStorage dataStorage, int startingPoint) : base("optional pe header data directories", 30, 3)
         {
             StartPoint = startingPoint;
 
@@ -48,11 +48,11 @@ namespace ProcessExplorer.components.impl
 
             SetEndPoint();
 
-            CertificateTablePointer = int.Parse(GetData(8, 1, ProcessHandler.DataType.HEX, true, true), NumberStyles.HexNumber);
-            CertificateTableSize = int.Parse(GetData(9, 1, ProcessHandler.DataType.HEX, true, true), NumberStyles.HexNumber);
+            CertificateTablePointer = int.Parse(GetData(8, 1, PluginInterface.Enums.DataType.HEX, true, true, dataStorage), NumberStyles.HexNumber);
+            CertificateTableSize = int.Parse(GetData(9, 1, PluginInterface.Enums.DataType.HEX, true, true, dataStorage), NumberStyles.HexNumber);
         }
 
-        public override void OpenForm(int row)
+        public override void OpenForm(int row, PluginInterface.DataStorage dataStorage)
         {
             return;
         }

@@ -111,19 +111,19 @@ namespace ProcessExplorer
             
             switch(settingItem.Text)
             {   // This will also automatically update the settings file asynchronously in case this program gets randomly terminated
-                case "Display offsets in hex": processHandler.Settings.OffsetsInHex = settingItem.Checked;
+                case "Display offsets in hex": processHandler.dataStorage.Settings.OffsetsInHex = settingItem.Checked;
                     processHandler.UpdateSettingsFile(true);
                     TriggerRedraw();
                     break;
-                case "Remove extra zeros": processHandler.Settings.RemoveZeros = settingItem.Checked;
+                case "Remove extra zeros": processHandler.dataStorage.Settings.RemoveZeros = settingItem.Checked;
                     processHandler.UpdateSettingsFile(true);
                     TriggerRedraw();
                     break;
-                case "Return to top": processHandler.Settings.ReterunToTop = settingItem.Checked;
+                case "Return to top": processHandler.dataStorage.Settings.ReterunToTop = settingItem.Checked;
                     processHandler.UpdateSettingsFile(true);
                     TriggerRedraw();
                     break;
-                case "Treat null as '.'": processHandler.Settings.TreatNullAsPeriod = settingItem.Checked;
+                case "Treat null as '.'": processHandler.dataStorage.Settings.TreatNullAsPeriod = settingItem.Checked;
                     processHandler.UpdateSettingsFile(true);
                     break;
             }
@@ -196,11 +196,11 @@ namespace ProcessExplorer
             TreeNode certifcationTable = new TreeNode("Certificate Table");
             bool addCertifcationTable = false;
 
-            SuperHeader optionalPeHeader = processHandler.GetComponentFromMap(optionalPeHeaderNode.Text.ToLower());
+            PluginInterface.SuperHeader optionalPeHeader = processHandler.GetComponentFromMap(optionalPeHeaderNode.Text.ToLower());
             if (optionalPeHeader != null && !optionalPeHeader.FailedToInitlize) peHeaderNode.Nodes.Add(optionalPeHeaderNode);
 
             TreeNode optionalPeHeader64Node = new TreeNode("Optional PE Header 64");
-            SuperHeader optionalPeHeader64 = processHandler.GetComponentFromMap(optionalPeHeader64Node.Text.ToLower());
+            PluginInterface.SuperHeader optionalPeHeader64 = processHandler.GetComponentFromMap(optionalPeHeader64Node.Text.ToLower());
             if (optionalPeHeader64 != null && !optionalPeHeader64.FailedToInitlize && ((OptionalPeHeader)optionalPeHeader).peThirtyTwoPlus)
             {
                 peHeaderNode.Nodes.Add(optionalPeHeader64Node);
@@ -213,7 +213,7 @@ namespace ProcessExplorer
             }
 
             TreeNode optionalPeHeader32Node = new TreeNode("Optional PE Header 32");
-            SuperHeader optionalPeHeader32 = processHandler.GetComponentFromMap(optionalPeHeader32Node.Text.ToLower());
+            PluginInterface.SuperHeader optionalPeHeader32 = processHandler.GetComponentFromMap(optionalPeHeader32Node.Text.ToLower());
             if (optionalPeHeader32 != null && !optionalPeHeader32.FailedToInitlize && !((OptionalPeHeader)optionalPeHeader).peThirtyTwoPlus)
             {
                 peHeaderNode.Nodes.Add(optionalPeHeader32Node);
@@ -229,7 +229,7 @@ namespace ProcessExplorer
 
             foreach (var map in processHandler.componentMap)
             {
-                SuperHeader header = map.Value;
+                PluginInterface.SuperHeader header = map.Value;
                 string compString = header.Component.ToString();
                 if (!compString.Contains("section header")) continue;
 
@@ -238,7 +238,7 @@ namespace ProcessExplorer
 
                 foreach (var innerMap in processHandler.componentMap)
                 {
-                    SuperHeader body = innerMap.Value;
+                    PluginInterface.SuperHeader body = innerMap.Value;
                     string newCompString = body.Component.ToString();
                    
                     if (!newCompString.Contains("section body") || compString.Replace("section header", "") != newCompString.Replace("section body", "")) continue;
@@ -253,9 +253,9 @@ namespace ProcessExplorer
                 mainSectionNode.Nodes.Add(sectionNode); // Add the main section node for each section to our parent node
             }
 
-            SuperHeader dosHeader = processHandler.GetComponentFromMap("dos header");
-            SuperHeader dosStub = processHandler.GetComponentFromMap("dos stub");
-            SuperHeader peHeader = processHandler.GetComponentFromMap("pe header");
+            PluginInterface.SuperHeader dosHeader = processHandler.GetComponentFromMap("dos header");
+            PluginInterface.SuperHeader dosStub = processHandler.GetComponentFromMap("dos stub");
+            PluginInterface.SuperHeader peHeader = processHandler.GetComponentFromMap("pe header");
             if (dosHeader != null && !dosHeader.FailedToInitlize) rootNode.Nodes.Add(dosHeaderNode);
             if (dosStub != null && !dosStub.FailedToInitlize) rootNode.Nodes.Add(dosStubNode);
             if (peHeader != null && !peHeader.FailedToInitlize) rootNode.Nodes.Add(peHeaderNode);
@@ -273,13 +273,13 @@ namespace ProcessExplorer
                 {
                     switch(menuItem.Text)
                     {
-                        case "Remove extra zeros": menuItem.Checked = processHandler.Settings.RemoveZeros;
+                        case "Remove extra zeros": menuItem.Checked = processHandler.dataStorage.Settings.RemoveZeros;
                             break;
-                        case "Return to top": menuItem.Checked = processHandler.Settings.ReterunToTop;
+                        case "Return to top": menuItem.Checked = processHandler.dataStorage.Settings.ReterunToTop;
                             break;
-                        case "Treat null as '.'": menuItem.Checked = processHandler.Settings.TreatNullAsPeriod;
+                        case "Treat null as '.'": menuItem.Checked = processHandler.dataStorage.Settings.TreatNullAsPeriod;
                             break;
-                        case "Display offsets in hex": menuItem.Checked = processHandler.Settings.OffsetsInHex;
+                        case "Display offsets in hex": menuItem.Checked = processHandler.dataStorage.Settings.OffsetsInHex;
                             break;
                     }
                 }
@@ -287,7 +287,7 @@ namespace ProcessExplorer
 
             // This will trigger the data to be dislayed
             selectedComponent = "everything";
-            dataGridView.RowCount = processHandler.GetComponentFromMap(selectedComponent).GetFilesRows();
+            dataGridView.RowCount = processHandler.dataStorage.GetFilesRows(); //processHandler.GetComponentFromMap(selectedComponent). GetFilesRows();
             dataGridView.CellValueNeeded += DataGridView_CellValueNeeded;
             TriggerRedraw();
         }
@@ -331,7 +331,7 @@ namespace ProcessExplorer
                 if(fileOffsetButton.Checked)
                 {
                     relativeOffsetButton.Checked = false;
-                    processHandler.Offset = ProcessHandler.OffsetType.FILE_OFFSET;
+                    processHandler.Offset = PluginInterface.Enums.OffsetType.FILE_OFFSET;
                     // RelativeOffset and FileOffsets are the same if you are viewing everything 
                     if (selectedComponent != "everything")
                         TriggerRedraw();
@@ -343,7 +343,7 @@ namespace ProcessExplorer
                 if(relativeOffsetButton.Checked)
                 {
                     fileOffsetButton.Checked = false;
-                    processHandler.Offset = ProcessHandler.OffsetType.RELATIVE_OFFSET;
+                    processHandler.Offset = PluginInterface.Enums.OffsetType.RELATIVE_OFFSET;
                     // RelativeOffset and FileOffsets are the same if you are viewing everything 
                     if (selectedComponent != "everything")
                         TriggerRedraw();
@@ -400,7 +400,7 @@ namespace ProcessExplorer
                 if (selected == selectedComponent) return;
                 selectedComponent = selected;
 
-                if(processHandler.Settings.ReterunToTop || newRowCount > previousRowCount) dataGridView.FirstDisplayedScrollingRowIndex = 0;
+                if(processHandler.dataStorage.Settings.ReterunToTop || newRowCount > previousRowCount) dataGridView.FirstDisplayedScrollingRowIndex = 0;
 
                 TriggerRedraw();
                 Form1_Resize(this, EventArgs.Empty);
@@ -421,13 +421,13 @@ namespace ProcessExplorer
                 if (checkBox.Checked) replaceAll = true;
             }
 
-            SuperHeader header = replaceAll ? processHandler.GetComponentFromMap("everything") : processHandler.GetComponentFromMap(selectedComponent);
+            PluginInterface.SuperHeader header = replaceAll ? processHandler.GetComponentFromMap("everything") : processHandler.GetComponentFromMap(selectedComponent);
             int firstRow = (int)Math.Floor(header.StartPoint / 16.0);
 
             int count = 0;
             for (int row = firstRow; row < header.RowSize; row++)
             {   // This will loop through every row in our selected component
-                string[] hexBytes = processHandler.FilesHex[row, 1].Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                string[] hexBytes = processHandler.dataStorage.FilesHex[row, 1].Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
                 string asciiString = "";
                 foreach (string hexByte in hexBytes)
@@ -441,12 +441,12 @@ namespace ProcessExplorer
 
                             if (search == asciiString)
                             {   // This means we reached a target string that we need to replace
-                                string originalRow = processHandler.FilesHex[row, 1];
+                                string originalRow = processHandler.dataStorage.FilesHex[row, 1];
                                 string[,] values = processHandler.GetValueVariations(originalRow.Replace(GetHexFromAscii(search), GetHexFromAscii(replace)), true, decimalButton.Checked); // This is always in hex
-                                processHandler.FilesHex[row, 1] = values[0, 0];
-                                processHandler.FilesDecimal[row, 1] = values[0, 1];
-                                processHandler.FilesBinary[row, 1] = values[0, 2];
-                                processHandler.UpdateASCII(values[0, 0], row);
+                                processHandler.dataStorage.FilesHex[row, 1] = values[0, 0];
+                                processHandler.dataStorage.FilesDecimal[row, 1] = values[0, 1];
+                                processHandler.dataStorage.FilesBinary[row, 1] = values[0, 2];
+                                processHandler.dataStorage.UpdateASCII(values[0, 0], row);
                                 TriggerRedraw();
                                 ++count;
 
@@ -469,7 +469,7 @@ namespace ProcessExplorer
 
         private bool ParseAscii(string hexByte, out byte asciiByte)
         {
-            if (processHandler.Settings.TreatNullAsPeriod && hexByte == "00")
+            if (processHandler.dataStorage.Settings.TreatNullAsPeriod && hexByte == "00")
             {
                 asciiByte = (byte)'.';
                 return true;
@@ -483,7 +483,7 @@ namespace ProcessExplorer
 
             foreach (char c in ascii)
             {
-                hexString.AppendFormat("{0:X2} ", processHandler.Settings.TreatNullAsPeriod ? c == 46 ? 0 : (int)c : (int) c);
+                hexString.AppendFormat("{0:X2} ", processHandler.dataStorage.Settings.TreatNullAsPeriod ? c == 46 ? 0 : (int)c : (int) c);
             }
             return hexString.ToString().Trim();
         }
@@ -497,24 +497,24 @@ namespace ProcessExplorer
             int row = e.RowIndex;
             string newValue = (string)e.Value;
 
-            SuperHeader selectedHeader = processHandler.GetComponentFromMap(selectedComponent);
+            PluginInterface.SuperHeader selectedHeader = processHandler.GetComponentFromMap(selectedComponent);
             if (selectedHeader == null || row >= selectedHeader.RowSize || doubleByteButton.Checked) return;
            
             if (selectedComponent == "everything")
             {   // if this is true then that means I need to update the other data source which first requies me to customize the data to the fit the structure
                 string[,] values = processHandler.GetValueVariations(newValue, hexButton.Checked, decimalButton.Checked);
 
-                int offset = int.Parse(selectedHeader.GetData(row, 0, ProcessHandler.DataType.DECIMAL, false, false)); // This gets the file offset in decimal form
+                int offset = int.Parse(selectedHeader.GetData(row, 0, PluginInterface.Enums.DataType.DECIMAL, false, false, processHandler.dataStorage)); // This gets the file offset in decimal form
 
-                processHandler.FilesHex[row, column] = values[0, 0];
-                processHandler.FilesDecimal[row, column] = values[0, 1];
-                processHandler.FilesBinary[row, column] = values[0, 2];
+                processHandler.dataStorage.FilesHex[row, column] = values[0, 0];
+                processHandler.dataStorage.FilesDecimal[row, column] = values[0, 1];
+                processHandler.dataStorage.FilesBinary[row, column] = values[0, 2];
 
-                processHandler.UpdateASCII(values[0, 0], row);
+                processHandler.dataStorage.UpdateASCII(values[0, 0], row);
 
                 foreach (var map in processHandler.componentMap)
                 {
-                    SuperHeader comp = map.Value;
+                    PluginInterface.SuperHeader comp = map.Value;
                     if (comp.Component != "everything" && comp.StartPoint <= offset && comp.EndPoint >= offset)
                     {
                         //processHandler.RecalculateHeaders(comp);
@@ -525,7 +525,7 @@ namespace ProcessExplorer
             }
             else
             {   // else I need to update the data source inside everything
-                selectedHeader.UpdateData(row, newValue, hexButton.Checked, decimalButton.Checked);
+                selectedHeader.UpdateData(row, newValue, hexButton.Checked, decimalButton.Checked, processHandler.dataStorage);
                 TriggerRedraw();
             }
             Console.WriteLine(" ");
@@ -539,7 +539,7 @@ namespace ProcessExplorer
 
         private void DataGridView_CellValueNeeded(object sender, DataGridViewCellValueEventArgs e)
         {
-            ProcessHandler.DataType type = hexButton.Checked ? ProcessHandler.DataType.HEX : decimalButton.Checked ? ProcessHandler.DataType.DECIMAL : ProcessHandler.DataType.BINARY;
+            PluginInterface.Enums.DataType type = hexButton.Checked ? PluginInterface.Enums.DataType.HEX : decimalButton.Checked ? PluginInterface.Enums.DataType.DECIMAL : PluginInterface.Enums.DataType.BINARY;
             e.Value = processHandler.GetValue(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked, selectedComponent, type);
         }
 

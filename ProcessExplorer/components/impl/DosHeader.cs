@@ -1,11 +1,11 @@
 ﻿using System;
 namespace ProcessExplorer.components
 {
-    class DosHeader : SuperHeader
+    class DosHeader : PluginInterface.SuperHeader
     {
-        public DosHeader(ProcessHandler processHandler) : base(processHandler, "dos header", 19, 3)
+        public DosHeader(PluginInterface.DataStorage dataStorage) : base("dos header", 19, 3)
         {
-            string[] firstHexLine = GetFilesHex(0, 1).Split(' ');
+            string[] firstHexLine = dataStorage.FilesHex[0, 1].Split(' ');
             if (firstHexLine[0].ToLower() != "4d" || firstHexLine[1].ToLower() != "5a")
             {   // This means this file is not a PE
                 FailedToInitlize = true;
@@ -39,7 +39,7 @@ namespace ProcessExplorer.components
             SetEndPoint();
         }
 
-        public override void OpenForm(int row)
+        public override void OpenForm(int row, PluginInterface.DataStorage dataStorage)
         {
             return; // No custom forms required here
         }

@@ -1,7 +1,8 @@
 {
   "profiles": {
     "ProcessExplorer": {
-      "commandName": "Project"
+      "commandName": "Project",
+      "workingDirectory": "C:\\Users\\yozma\\source\\repos\\ProcessExplorer\\ProcessExplorer"
     }
   }
 }

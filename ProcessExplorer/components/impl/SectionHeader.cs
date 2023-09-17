@@ -2,12 +2,11 @@
 
 namespace ProcessExplorer.components.impl
 {
-    class SectionHeader : SuperHeader
+    class SectionHeader : PluginInterface.SuperHeader
     {
         public readonly int bodyStartPoint, bodyEndPoint;
 
-        public SectionHeader(ProcessHandler processHandler, int startingPoint, string sectionType) 
-            : base(processHandler, "section header", 10, 3)
+        public SectionHeader(PluginInterface.DataStorage dataStorage, int startingPoint, string sectionType) : base("section header", 10, 3)
         {
             StartPoint = startingPoint;
             Component = sectionType;
@@ -27,11 +26,11 @@ namespace ProcessExplorer.components.impl
 
             SetEndPoint();
 
-            bodyStartPoint = Convert.ToInt32(OptionsForm.GetBigEndianValue(GetData(4, 1, ProcessHandler.DataType.HEX, false, true)), 16);
-            bodyEndPoint = Convert.ToInt32(OptionsForm.GetBigEndianValue(GetData(3, 1, ProcessHandler.DataType.HEX, false, true)), 16) + bodyStartPoint;
+            bodyStartPoint = Convert.ToInt32(GetBigEndianValue(GetData(4, 1, PluginInterface.Enums.DataType.HEX, false, true, dataStorage)), 16);
+            bodyEndPoint = Convert.ToInt32(GetBigEndianValue(GetData(3, 1, PluginInterface.Enums.DataType.HEX, false, true, dataStorage)), 16) + bodyStartPoint;
         }
 
-        public override void OpenForm(int row)
+        public override void OpenForm(int row, PluginInterface.DataStorage dataStorage)
         {
             return;
         }

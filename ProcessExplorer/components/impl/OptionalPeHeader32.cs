@@ -5,9 +5,9 @@ using System.Collections.Generic;
 
 namespace ProcessExplorer.components.impl
 {
-    class OptionalPeHeader32 : SuperHeader
+    class OptionalPeHeader32 : PluginInterface.SuperHeader
     {
-        public OptionalPeHeader32(ProcessHandler processHandler, int startingPoint) : base(processHandler, "optional pe header 32", 22, 3)
+        public OptionalPeHeader32(int startingPoint) : base("optional pe header 32", 22, 3)
         {
             StartPoint = startingPoint;
 
@@ -52,7 +52,7 @@ namespace ProcessExplorer.components.impl
             };
         }
 
-        public override void OpenForm(int row)
+        public override void OpenForm(int row, PluginInterface.DataStorage dataStorage)
         {
             if (row == 5)
             {
@@ -60,15 +60,16 @@ namespace ProcessExplorer.components.impl
                 "0x00100005 - Windows XP", "0x00200005 - Windows XP x64", "0x00000006 - Windows Vista", "0x00100006 - Windows 7", "0x00200006 - Windows 8",
                     "0x00300006 - Windows 8.1", "0x00000010  - Windows 10" };
 
-                string combinedHex = OptionsForm.GetBigEndianValue(GetData(row - 1, 1, ProcessHandler.DataType.HEX, false, false) + " " + GetData(row, 1, ProcessHandler.DataType.HEX, false, false));
-                using (OptionsForm optionsForm = new OptionsForm(this, combinedHex, "Minimum Operating System Version", row, options, null, null))
+                string combinedHex = OptionsForm.GetBigEndianValue(GetData(row - 1, 1, PluginInterface.Enums.DataType.HEX, false, false, dataStorage) + " "
+                    + GetData(row, 1, PluginInterface.Enums.DataType.HEX, false, false, dataStorage));
+                using (OptionsForm optionsForm = new OptionsForm(this, combinedHex, "Minimum Operating System Version", row, options, null, null, dataStorage))
                 {
                     DialogResult result = optionsForm.ShowDialog();
                     if (result == DialogResult.OK)
                     {
                         return; // ToDo
                         string updatedComboBox = optionsForm.GetUpdatedComboBoxValue();
-                        if (updatedComboBox != null) UpdateData(5, updatedComboBox, true, false);
+                        if (updatedComboBox != null) UpdateData(5, updatedComboBox, true, false, dataStorage);
                     }
                 }
             }
@@ -79,15 +80,16 @@ namespace ProcessExplorer.components.impl
                 "0x00100005 - Windows XP", "0x00200005 - Windows XP x64", "0x00000006 - Windows Vista", "0x00100006 - Windows 7", "0x00200006 - Windows 8",
                     "0x00300006 - Windows 8.1", "0x00000010  - Windows 10" };
 
-                string combinedHex = OptionsForm.GetBigEndianValue(GetData(row - 1, 1, ProcessHandler.DataType.HEX, false, false) + " " + GetData(row, 1, ProcessHandler.DataType.HEX, false, false));
-                using (OptionsForm optionsForm = new OptionsForm(this, combinedHex, "Minimum Subsystem Version", row, options, null, null))
+                string combinedHex = OptionsForm.GetBigEndianValue(GetData(row - 1, 1, PluginInterface.Enums.DataType.HEX, false, false, dataStorage) + " "
+                    + GetData(row, 1, PluginInterface.Enums.DataType.HEX, false, false, dataStorage));
+                using (OptionsForm optionsForm = new OptionsForm(this, combinedHex, "Minimum Subsystem Version", row, options, null, null, dataStorage))
                 {
                     DialogResult result = optionsForm.ShowDialog();
                     if (result == DialogResult.OK)
                     {
                         return; // ToDo
                         string updatedComboBox = optionsForm.GetUpdatedComboBoxValue();
-                        if (updatedComboBox != null) UpdateData(9, updatedComboBox, true, false);
+                        if (updatedComboBox != null) UpdateData(9, updatedComboBox, true, false, dataStorage);
                     }
                 }
             }
@@ -98,13 +100,13 @@ namespace ProcessExplorer.components.impl
                     "0x0008 - IMAGE_SUBSYSTEM_EFI_APPLICATION", "0x0009 - IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER", "0x000A - IMAGE_SUBSYSTEM_EFI_RUNTIME_DRIVER",
                 "0x000B - IMAGE_SUBSYSTEM_EFI_ROM", "0x000C - IMAGE_SUBSYSTEM_XBOX", "0x000D - IMAGE_SUBSYSTEM_WINDOWS_BOOT_APPLICATION" };
 
-                using (OptionsForm optionsForm = new OptionsForm(this, null, "SubSystems", row, options, null, null))
+                using (OptionsForm optionsForm = new OptionsForm(this, null, "SubSystems", row, options, null, null, dataStorage))
                 {
                     DialogResult result = optionsForm.ShowDialog();
                     if (result == DialogResult.OK)
                     {
                         string updatedComboBox = optionsForm.GetUpdatedComboBoxValue();
-                        if (updatedComboBox != null) UpdateData(14, updatedComboBox, true, false);
+                        if (updatedComboBox != null) UpdateData(14, updatedComboBox, true, false, dataStorage);
                     }
                 }
             }
@@ -112,13 +114,13 @@ namespace ProcessExplorer.components.impl
             {
                 string[] combinedStrings = Characteristics.Select(kv => $"{"0x" + (kv.Key).ToString("X")} - {kv.Value}").ToArray();
 
-                using (OptionsForm optionsForm = new OptionsForm(this, null, "DLL Characteristics", row, null, combinedStrings, null))
+                using (OptionsForm optionsForm = new OptionsForm(this, null, "DLL Characteristics", row, null, combinedStrings, null, dataStorage))
                 {
                     DialogResult result = optionsForm.ShowDialog();
                     if (result == DialogResult.OK)
                     {
                         string updatedCharacteristic = optionsForm.GetUpdatedCharacterisitcs();
-                        UpdateData(15, updatedCharacteristic, true, false);
+                        UpdateData(15, updatedCharacteristic, true, false, dataStorage);
                     }
                 }
             }

@@ -18,28 +18,22 @@ namespace ProcessExplorer
 
         public string FilePath { get; private set; }
 
-        public Settings Settings { get; private set; }
+        public PluginInterface.DataStorage dataStorage { get; private set; }
 
-        public bool Is64Bit { get; set; }
-
-        public OffsetType Offset { get; set; }
+        public PluginInterface.Enums.OffsetType Offset { get; set; }
 
         private int HeaderEndPoint { get; set; }
 
         // These following fields are all only initlized inside the constructor and thus marked 'readonly' 
-        public readonly Dictionary<string, SuperHeader> componentMap = new Dictionary<string, SuperHeader>();
+        public readonly Dictionary<string, PluginInterface.SuperHeader> componentMap = new Dictionary<string, PluginInterface.SuperHeader>();
         private readonly FileStream file;
 
-        private readonly BlockingCollection<Settings> settingsQueue = new BlockingCollection<Settings>();
+        private readonly BlockingCollection<PluginInterface.Settings> settingsQueue = new BlockingCollection<PluginInterface.Settings>();
         private readonly CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
         private readonly Task writerTask;
 
-        public string[,] FilesHex { get; private set; }
-        public string[,] FilesDecimal { get; private set; }
-        public string[,] FilesBinary { get; private set; }
-
         /* This prevents us from getting an error if the map does not contain a specific ProcessComponent */
-        public SuperHeader GetComponentFromMap(string comp)
+        public PluginInterface.SuperHeader GetComponentFromMap(string comp)
         {
             if (!componentMap.ContainsKey(comp)) return null;
             return componentMap[comp];
@@ -51,10 +45,7 @@ namespace ProcessExplorer
 
             this.file = file;
             FileName = new FileInfo(file.Name).Name;
-            Offset = OffsetType.FILE_OFFSET;
-
-            HandleSettingsFileIO();
-            writerTask = Task.Run(() => FileWriterTaskMethod(), cancellationTokenSource.Token);
+            Offset = PluginInterface.Enums.OffsetType.FILE_OFFSET;
 
             // This specifies that the array will be 16 across and (file.Length / 16) down
             // I am precomputing these values so that I dont have to recompute them when the user switches windows or modes
@@ -63,49 +54,50 @@ namespace ProcessExplorer
             string[,] filesBinary = new string[(int)Math.Ceiling(file.Length / 16.0), 2];
 
             PopulateArrays(filesHex, filesDecimal, filesBinary); // Passes a reference to the memory address of the above arrays for them to be populated
-            FilesHex = filesHex;
-            FilesDecimal = filesDecimal;
-            FilesBinary = filesBinary;
+            // Create our main storage object that will be passed around to every plugin
+            dataStorage = new PluginInterface.DataStorage(HandleSettingsFileIO(), filesHex, filesDecimal, filesBinary, true); 
 
-            componentMap.Add("everything", new Everything(this, filesHex.GetLength(0)));
+            writerTask = Task.Run(() => FileWriterTaskMethod(), cancellationTokenSource.Token);
+
+            componentMap.Add("everything", new Everything(dataStorage, filesHex.GetLength(0)));
             if (GetComponentFromMap("everything").EndPoint <= 2) return; // The file is esentially blank  
 
-            componentMap.Add("dos header", new DosHeader(this));
+            componentMap.Add("dos header", new DosHeader(dataStorage));
             if (GetComponentFromMap("dos header").FailedToInitlize) return; // This means this is not a PE
 
-            componentMap.Add("dos stub", new DosStub(this, GetComponentFromMap("dos header").EndPoint)); // This means our PE does not contain a dos stub which is not normal
+            componentMap.Add("dos stub", new DosStub(this, dataStorage, GetComponentFromMap("dos header").EndPoint)); // This means our PE does not contain a dos stub which is not normal
             if (GetComponentFromMap("dos stub").FailedToInitlize) return;
 
             // Possible To:Do look into finding a PE that uses RichHeaders since those can sometimes appear before the PE Header
-            PeHeader peHeader = new PeHeader(this, GetComponentFromMap("dos stub").EndPoint);
+            PeHeader peHeader = new PeHeader(this, dataStorage, GetComponentFromMap("dos stub").EndPoint);
             componentMap.Add("pe header", peHeader);
             if (GetComponentFromMap("pe header").FailedToInitlize) return; // This means our PE Header is either too short or does not contain the signature
 
-            componentMap.Add("optional pe header", new OptionalPeHeader(this, GetComponentFromMap("pe header").EndPoint));
+            componentMap.Add("optional pe header", new OptionalPeHeader(dataStorage, GetComponentFromMap("pe header").EndPoint));
 
             int endPoint;
             if (((OptionalPeHeader)GetComponentFromMap("optional pe header")).validHeader)
             { // This means we most likely have either 64 or 32 bit option headers
                 if (((OptionalPeHeader)GetComponentFromMap("optional pe header")).peThirtyTwoPlus)
                 {   // This means our optional header is valid and that we are using 64 bit headers
-                    componentMap.Add("optional pe header 64", new OptionalPeHeader64(this, GetComponentFromMap("optional pe header").EndPoint));
-                    OptionalPeHeaderDataDirectories dataDirectories = new OptionalPeHeaderDataDirectories(this, GetComponentFromMap("optional pe header 64").EndPoint);
+                    componentMap.Add("optional pe header 64", new OptionalPeHeader64(GetComponentFromMap("optional pe header").EndPoint));
+                    OptionalPeHeaderDataDirectories dataDirectories = new OptionalPeHeaderDataDirectories(dataStorage, GetComponentFromMap("optional pe header 64").EndPoint);
                     componentMap.Add("optional pe header data directories", dataDirectories);
 
                     if(dataDirectories.CertificateTablePointer > 0 && dataDirectories.CertificateTableSize > 0)
                     {
-                        componentMap.Add("certificate table", new CertificationTable(this, dataDirectories.CertificateTablePointer, dataDirectories.CertificateTableSize));
+                        componentMap.Add("certificate table", new CertificationTable(dataDirectories.CertificateTablePointer, dataDirectories.CertificateTableSize));
                     }
                 }
                 else
                 {
-                    componentMap.Add("optional pe header 32", new OptionalPeHeader32(this, GetComponentFromMap("optional pe header").EndPoint));
-                    OptionalPeHeaderDataDirectories dataDirectories = new OptionalPeHeaderDataDirectories(this, GetComponentFromMap("optional pe header 32").EndPoint);
+                    componentMap.Add("optional pe header 32", new OptionalPeHeader32(GetComponentFromMap("optional pe header").EndPoint));
+                    OptionalPeHeaderDataDirectories dataDirectories = new OptionalPeHeaderDataDirectories(dataStorage, GetComponentFromMap("optional pe header 32").EndPoint);
                     componentMap.Add("optional pe header data directories", dataDirectories);
 
                     if (dataDirectories.CertificateTablePointer > 0 && dataDirectories.CertificateTableSize > 0)
                     {
-                        componentMap.Add("certificate table", new CertificationTable(this, dataDirectories.CertificateTablePointer, dataDirectories.CertificateTableSize));
+                        componentMap.Add("certificate table", new CertificationTable(dataDirectories.CertificateTablePointer, dataDirectories.CertificateTableSize));
                     }
                 }
                 endPoint = GetComponentFromMap("optional pe header data directories").EndPoint;
@@ -125,9 +117,9 @@ namespace ProcessExplorer
             string ascii = ""; // Section name
             int headerNameStart = 0;
             int headerNameCount = 0;
-            for (int row = startingIndex; row < FilesHex.GetLength(0); row++) // Loop through the rows
+            for (int row = startingIndex; row < dataStorage.FilesHex.GetLength(0); row++) // Loop through the rows
             {
-                string[] hexBytes = FilesHex[row, 1].Split(' ');
+                string[] hexBytes = dataStorage.FilesHex[row, 1].Split(' ');
 
                 for (int j = initialSkipAmount; j < hexBytes.Length; j++) // Loop through each rows bytes
                 {
@@ -160,8 +152,8 @@ namespace ProcessExplorer
                                 string udpatedAscii = ascii.Replace(" ", "").ToLower(); // Remove the nul characters which were swapped to a space
                                 string sectionType = udpatedAscii + " section header";
                                 string sectionBodyType = udpatedAscii + " section body";
-                                SectionHeader header = new SectionHeader(this, headerNameStart, sectionType);
-                                SectionBody body = new SectionBody(this, header.bodyStartPoint, header.bodyEndPoint, sectionBodyType);
+                                SectionHeader header = new SectionHeader(dataStorage, headerNameStart, sectionType);
+                                SectionBody body = new SectionBody(header.bodyStartPoint, header.bodyEndPoint, sectionBodyType);
 
                                 if (componentMap.ContainsKey(sectionType)) componentMap[sectionType] = header;
                                 else componentMap.Add(sectionType, header);
@@ -308,60 +300,43 @@ namespace ProcessExplorer
             return values;
         }
 
-        public void UpdateASCII(string hexString, int row)
-        {
-            string[] hexBytes = hexString.Split(' '); // Split by spaces
-
-            string asciiString = "";
-            foreach (string hexByte in hexBytes)
-            {
-                if (byte.TryParse(hexByte, System.Globalization.NumberStyles.HexNumber, null, out byte asciiByte))
-                {
-                    if (asciiByte >= 32 && asciiByte <= 128) asciiString += (char)asciiByte;
-                    else asciiString += ".";
-                }
-                else asciiString += ".";
-            }
-            FilesHex[row, 2] = asciiString;
-        }
-
         public int GetComponentsRowIndexCount(string component)
         {
-            SuperHeader header = GetComponentFromMap(component);
+            PluginInterface.SuperHeader header = GetComponentFromMap(component);
             if (header == null) return 0;
-            return header.GetFilesRows() - 1;
+            return header.RowSize;
         }
 
         public int GetComponentsColumnIndexCount(string component)
         {
-            SuperHeader header = GetComponentFromMap(component);
+            PluginInterface.SuperHeader header = GetComponentFromMap(component);
             if (header == null) return 0;
-            return header.GetFilesColumns() - 1;
+            return header.RowSize;
         }
 
 
         /* Returns data that will fill up the DataDisplayView */
-        public string GetValue(int row, int column, bool doubleByte, string component, DataType type)
+        public string GetValue(int row, int column, bool doubleByte, string component, PluginInterface.Enums.DataType type)
         {
-            SuperHeader header = GetComponentFromMap(component);
+            PluginInterface.SuperHeader header = GetComponentFromMap(component);
             if (header == null) return "";
-            return header.GetData(row, column, type, doubleByte, Offset == OffsetType.FILE_OFFSET);
+            return header.GetData(row, column, type, doubleByte, Offset == PluginInterface.Enums.OffsetType.FILE_OFFSET, dataStorage);
         }
          
         public void OpenDescrptionForm(string component, int row)
         {
-            SuperHeader header = GetComponentFromMap(component);
-            if(header != null) header.OpenForm(row);
+            PluginInterface.SuperHeader header = GetComponentFromMap(component);
+            if(header != null) header.OpenForm(row, dataStorage);
         }
 
         public void SaveFile(string outputPath)
         {
-            int length = GetComponentFromMap("everything").GetFilesRows();
+            int length = GetComponentFromMap("everything").RowSize;
             string[] hexDataArray = new string[length];
 
             for (int row = 0; row < length; row++)
             {
-                hexDataArray[row] = FilesHex[row, 1];
+                hexDataArray[row] = dataStorage.FilesHex[row, 1];
             }
 
             try
@@ -392,43 +367,37 @@ namespace ProcessExplorer
         }
 
 
-        private void CreateSettingsFile()
+        private PluginInterface.Settings CreateSettingsFile()
         {
-            Settings = new Settings(true, true, false, true);
-            string json = JsonConvert.SerializeObject(Settings, Formatting.Indented);
+            PluginInterface.Settings settings = new PluginInterface.Settings(true, true, false, true);
+            string json = JsonConvert.SerializeObject(settings, Formatting.Indented);
             File.WriteAllText(FilePath, json);
+            return settings;
         }
 
-        private void HandleSettingsFileIO()
+        private PluginInterface.Settings HandleSettingsFileIO()
         {
             FilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
 
             try
             {
-                if (!File.Exists(FilePath))
-                {
-                    CreateSettingsFile(); return;
-                }
+                if (!File.Exists(FilePath)) return CreateSettingsFile();
 
                 string settingsContents = File.ReadAllText(FilePath);
-                if (settingsContents == null || settingsContents == "")
-                {
-                    CreateSettingsFile(); return;
-                }
+                if (settingsContents == null || settingsContents == "") 
+                    return CreateSettingsFile();
 
-                Settings deserializedObject = JsonConvert.DeserializeObject<Settings>(settingsContents);
+                PluginInterface.Settings deserializedObject = JsonConvert.DeserializeObject<PluginInterface.Settings>(settingsContents);
                 if (deserializedObject == null)
-                {
-                    CreateSettingsFile(); return;
-                }
+                    return CreateSettingsFile();
 
-                Settings = (Settings)deserializedObject;
-                return;
+                return deserializedObject;
             }
             catch (Exception ex)
             {
                 Console.WriteLine("An error occurred: " + ex.Message);
             }
+            return CreateSettingsFile();
         }
 
         /// <summary>
@@ -444,7 +413,7 @@ namespace ProcessExplorer
         {
             if(!async)
             {
-                string json = JsonConvert.SerializeObject(Settings, Formatting.Indented);
+                string json = JsonConvert.SerializeObject(dataStorage.Settings, Formatting.Indented);
                 File.WriteAllText(FilePath, json);
                 return;
             }
@@ -452,7 +421,7 @@ namespace ProcessExplorer
             // This means our task has been canceled (most likely opening a new file)
             if (writerTask == null || cancellationTokenSource.IsCancellationRequested) return;
 
-            settingsQueue.Add(Settings);
+            settingsQueue.Add(dataStorage.Settings);
         }
 
         /// <summary>
@@ -470,7 +439,7 @@ namespace ProcessExplorer
 
                     if (newSettings == null) continue;
 
-                    string json = JsonConvert.SerializeObject(Settings, Formatting.Indented);
+                    string json = JsonConvert.SerializeObject(dataStorage.Settings, Formatting.Indented);
                     File.WriteAllText(FilePath, json);
                 }
             }
@@ -478,16 +447,6 @@ namespace ProcessExplorer
             {
                 
             }
-        }
-
-        public enum OffsetType
-        {
-            FILE_OFFSET, RELATIVE_OFFSET
-        }
-
-        public enum DataType
-        {
-            HEX, DECIMAL, BINARY
         }
 
     }
