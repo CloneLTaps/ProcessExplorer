@@ -287,7 +287,7 @@ namespace ProcessExplorer
 
             // This will trigger the data to be dislayed
             selectedComponent = "everything";
-            dataGridView.RowCount = processHandler.dataStorage.GetFilesRows(); //processHandler.GetComponentFromMap(selectedComponent). GetFilesRows();
+            dataGridView.RowCount = processHandler.dataStorage.GetFilesRows() + 1; //processHandler.GetComponentFromMap(selectedComponent). GetFilesRows();
             dataGridView.CellValueNeeded += DataGridView_CellValueNeeded;
             TriggerRedraw();
         }
@@ -396,6 +396,8 @@ namespace ProcessExplorer
                 int previousRowCount = processHandler.GetComponentsRowIndexCount(selectedComponent);
                 string selected = nodeText.ToLower();
                 int newRowCount = processHandler.GetComponentsRowIndexCount(selected);
+
+                Console.WriteLine("Selected:" + selected.ToString() + " PreviousCount:" + previousRowCount + " NewRowCount:" + newRowCount);
   
                 if (selected == selectedComponent) return;
                 selectedComponent = selected;
@@ -540,6 +542,8 @@ namespace ProcessExplorer
         private void DataGridView_CellValueNeeded(object sender, DataGridViewCellValueEventArgs e)
         {
             PluginInterface.Enums.DataType type = hexButton.Checked ? PluginInterface.Enums.DataType.HEX : decimalButton.Checked ? PluginInterface.Enums.DataType.DECIMAL : PluginInterface.Enums.DataType.BINARY;
+           /* Console.WriteLine("Comp:" + selectedComponent.ToString() + " Row:" + e.RowIndex + " Column:" + e.ColumnIndex + " Data:"
+                + processHandler.GetValue(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked, selectedComponent, type));*/
             e.Value = processHandler.GetValue(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked, selectedComponent, type);
         }
 

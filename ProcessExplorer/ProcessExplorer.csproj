@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-	  <TargetFramework>net5.0-windows</TargetFramework>
+	  <TargetFramework>netcoreapp3.1</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationIcon />
     <StartupObject />
@@ -49,7 +49,7 @@
 
   <ItemGroup>
     <Reference Include="PluginInterface">
-      <HintPath>..\PluginInterface\bin\Release\net5.0\PluginInterface.dll</HintPath>
+      <HintPath>..\PluginInterface\bin\Release\netcoreapp3.1\PluginInterface.dll</HintPath>
     </Reference>
   </ItemGroup>
 

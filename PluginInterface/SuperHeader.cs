@@ -60,22 +60,26 @@ namespace PluginInterface
             int firstRow = (int)Math.Floor(StartPoint / 16.0);  // First row of our data
 
             if (Size == null && (row + firstRow) * 16 >= EndPoint) return "";  // This will handle blank spots in sections and the Dos Stub     
+            int mod16 = StartPoint % 16;
 
-            // Something like Dos Stub or section bodies (mirrors the original data) while being aligned with 16 byte rows
-            if (Size == null && StartPoint % 16 == 0)
+            if (Size == null)
             {
-                if (column == 0)
+                if(mod16 == 0)
+                {   // Something like Dos Stub or section bodies (mirrors the original data) while being aligned with 16 byte rows
+                    if (column != 0) return GetCorrectFormat(row + firstRow, column, dataType, bigEndian, dataStroage);
+                }
+
+                if(column == 0)
                 {
-                    int off = row * 16;
+                    int off = row * 16 - (row > 0 ? mod16 : 0); // This compensates for the possible non 16 byte aligned headers
                     return GetOffset(inFileOffset ? off + StartPoint : off, dataStroage.Settings.OffsetsInHex ? DataType.HEX : dataType);
                 }
-                return GetCorrectFormat(row + firstRow, column, dataType, bigEndian, dataStroage);
             }
 
             if (Desc != null && column == 2) return Desc[row];  // This means its just asking for the custom description
 
             int relativeOfffset = 0;  // Amount of bytes into the row till we reach our target data relative to the start of this section
-            int bytes = Size == null ? 16 : Size[row];  // How many bytes I need to read from the array
+            int bytes = Size == null ? (row == 0 ? mod16 : 16) : Size[row];  // How many bytes I need to read from the array
             if (Size != null)
             {   // The following is designed for headers
                 for (int i = 0; i < row; i++)
@@ -88,7 +92,10 @@ namespace PluginInterface
             {
                 return GetOffset((inFileOffset ? relativeOfffset + StartPoint : relativeOfffset), dataStroage.Settings.OffsetsInHex ? DataType.HEX : dataType);  // This means we just need to return the offset
             }
-            relativeOfffset += StartPoint % 16;
+            relativeOfffset += mod16;
+
+            // This handles formating data for sections, dos stub, cert table, etc that dont start at an even 16 byte interval
+            if (Size == null && row > 0) relativeOfffset = 16 * row;
 
             // At this point we should only be working with data as the file offsets and descriptions should of been taken care of already
             int startingDataRow = firstRow + (int)Math.Floor(relativeOfffset / 16.0);  // Row where our data begins (data may extend onto additional rows)
@@ -100,16 +107,17 @@ namespace PluginInterface
 
             for (int i = startingDataRow; i < dataStroage.GetFilesRows(); i++)
             {   // Looping through our rows
-                if (data == null) data = GetCorrectFormat(i, 1, bigEndian ? DataType.HEX : dataType, false, dataStroage).Split(' ');
-                else data = data.Concat(GetCorrectFormat(i, 1, bigEndian ? DataType.HEX : dataType, false, dataStroage).Split(' ')).ToArray();
+                if (data == null) data = SplitString(GetCorrectFormat(i, column, bigEndian ? DataType.HEX : dataType, false, dataStroage), column);
+                else data = data.Concat(SplitString(GetCorrectFormat(i, column, bigEndian ? DataType.HEX : dataType, false, dataStroage), column)).ToArray();
 
-                int weight = Size == null ? ((row - startingDataRow + 1) * 16) : data.Length;  // First half works for sections and Dos headers and second works for normal headers
-
+                int weight = data.Length;
                 if (weight >= startingRowOffset + bytes) break;  // This means our data array now contains enough data to retrieve the requested data
             }
 
-            string finalData = string.Join(" ", data.Skip(startingRowOffset).Take(bytes));
+            // We dont want to add spaces when dealing with the ASCII column
+            if (column == 2) return string.Join("", data.Skip(startingRowOffset).Take(bytes));
 
+            string finalData = string.Join(" ", data.Skip(startingRowOffset).Take(bytes));
             if (bigEndian)
             {
                 string splitHex = GetBigEndian(finalData.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries), dataStroage.Settings.RemoveZeros);
@@ -124,6 +132,12 @@ namespace PluginInterface
                 }
             }
             return finalData;
+        }
+
+        private string[] SplitString(string data, int column)
+        {
+            if (column == 1) return data.Split(' ');
+            return (data.ToCharArray().Select(c => c.ToString()).ToArray()).Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
         }
 
         private string GetCorrectFormat(int row, int column, DataType dataType, bool bigEndian, DataStorage data)
