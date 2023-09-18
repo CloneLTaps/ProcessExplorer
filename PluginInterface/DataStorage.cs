@@ -12,17 +12,19 @@ namespace PluginInterface
 
         public bool Is64Bit { get; set; }
 
+        public string FileName { get; private set; }
         public string[,] FilesHex { get; private set; }
         public string[,] FilesDecimal { get; private set; }
         public string[,] FilesBinary { get; private set; }
 
-        public DataStorage(Settings settings, string[,] filesHex, string[,] filesDecimal, string[,] filesBinary, bool is64Bit)
+        public DataStorage(Settings settings, string[,] filesHex, string[,] filesDecimal, string[,] filesBinary, bool is64Bit, string fileName)
         {
             this.Settings = settings;
             this.FilesHex = filesHex;
             this.FilesDecimal = filesDecimal;
             this.FilesBinary = filesBinary;
             this.Is64Bit = is64Bit;
+            this.FileName = fileName;
         }
 
         public int GetFilesRows()

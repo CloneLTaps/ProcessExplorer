@@ -8,7 +8,6 @@ namespace ProcessExplorer
 {
     static class Program
     {
-        private static List<PluginInterface.IPlugin> loadedPlugins = new List<PluginInterface.IPlugin>();
 
         /// <summary>
         ///  The main entry point for the application.
@@ -16,7 +15,9 @@ namespace ProcessExplorer
         [STAThread]
         static void Main()
         {
-            /*var pluginFolder = @"Path\to\Your\Plugin\Folder";
+            List<PluginInterface.IPlugin> loadedPlugins = new List<PluginInterface.IPlugin>();
+
+            var pluginFolder = "Plugins";
             var pluginFiles = Directory.GetFiles(pluginFolder, "*.dll");
 
             foreach (var pluginFile in pluginFiles)
@@ -24,26 +25,19 @@ namespace ProcessExplorer
                 var assembly = Assembly.LoadFrom(pluginFile);
                 foreach (var type in assembly.GetTypes())
                 {
-                    if (typeof(PluginInterface.IPlugin).IsAssignableFrom(type))
+                    if (typeof(PluginInterface.IPlugin).IsAssignableFrom(type) && !type.IsInterface)
                     {
                         var plugin = (PluginInterface.IPlugin)Activator.CreateInstance(type);
-                        // Initialize and store the loaded plugins
-                        plugin.Initialize();
                         loadedPlugins.Add(plugin);
+                        Console.WriteLine("Plugin: " + type.Name);
                     }
                 }
-            }*/
-
-            foreach (var plugin in loadedPlugins)
-            {
-                plugin.Execute();
             }
-
 
             Application.SetHighDpiMode(HighDpiMode.SystemAware);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Form1());
+            Application.Run(new Form1(loadedPlugins));
 
             Console.WriteLine("Starting HexEditor");
         }

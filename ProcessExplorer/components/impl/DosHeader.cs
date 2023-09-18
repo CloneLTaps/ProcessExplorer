@@ -25,14 +25,14 @@ namespace ProcessExplorer.components
             Size[6] = 2; Desc[6] = "e_maxalloc (2 bytes) maximum number of paragraphs (16 bytes per para).";
             Size[7] = 2; Desc[7] = "e_ss (2 bytes) inital value of the stack segment register.";
             Size[8] = 2; Desc[8] = "e_sp (2 bytes) inital value of the stack pointer register.";
-            Size[9] = 2; Desc[9] = "e_csum: (2 bytes) check sum (verifys programs size in memory).";
-            Size[10] = 2; Desc[10] = "e_ip: (2 bytes) initial value of the instruction pointer register.";
-            Size[11] = 2; Desc[11] = "e_cs: (2 bytes) initial value of the code segment register.";
-            Size[12] = 2; Desc[12] = "e_lfarlc: (2 bytes) stores offset to the relocation table.";
-            Size[13] = 2; Desc[13] = "e_ovno: (2 bytes) overlay number (allows code swapping in mem).";
-            Size[14] = 8; Desc[14] = "e_res: (8 bytes) reserved fields.";
+            Size[9] = 2; Desc[9] = "e_csum (2 bytes) check sum (verifys programs size in memory).";
+            Size[10] = 2; Desc[10] = "e_ip (2 bytes) initial value of the instruction pointer register.";
+            Size[11] = 2; Desc[11] = "e_cs (2 bytes) initial value of the code segment register.";
+            Size[12] = 2; Desc[12] = "e_lfarlc (2 bytes) stores offset to the relocation table.";
+            Size[13] = 2; Desc[13] = "e_ovno (2 bytes) overlay number (allows code swapping in mem).";
+            Size[14] = 8; Desc[14] = "e_res (8 bytes) reserved fields.";
             Size[15] = 2; Desc[15] = "e_oemid: (2 bytes) manufacturer or distributor info.";
-            Size[16] = 2; Desc[16] = "e_oeminfo: (2 bytes) OEM info or version numbers";
+            Size[16] = 2; Desc[16] = "e_oeminfo (2 bytes) OEM info or version numbers";
             Size[17] = 20; Desc[17] = "e_res2: (20 bytes) reserved fields";
             Size[18] = 4; Desc[18] = "e_lfanew: (4 bytes) offset to the start of the PE Header.";
             

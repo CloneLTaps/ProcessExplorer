@@ -10,7 +10,6 @@ namespace ProcessExplorer.components.impl
             StartPoint = startPoint;
             EndPoint = StartPoint + size;
             RowSize = (int) Math.Ceiling(size / 16.0);
-            Console.WriteLine("StartPoint:" + StartPoint + " EndPoint:" + EndPoint + " RowSize:" + RowSize);
 
             Size = null;
             Desc = null;

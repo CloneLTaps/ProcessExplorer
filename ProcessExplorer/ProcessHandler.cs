@@ -14,8 +14,6 @@ namespace ProcessExplorer
 {
     class ProcessHandler
     {
-        public string FileName { get; private set; }
-
         public string FilePath { get; private set; }
 
         public PluginInterface.DataStorage dataStorage { get; private set; }
@@ -44,7 +42,7 @@ namespace ProcessExplorer
             if (file == null) return;
 
             this.file = file;
-            FileName = new FileInfo(file.Name).Name;
+            string fileName = new FileInfo(file.Name).Name;
             Offset = PluginInterface.Enums.OffsetType.FILE_OFFSET;
 
             // This specifies that the array will be 16 across and (file.Length / 16) down
@@ -55,10 +53,11 @@ namespace ProcessExplorer
 
             PopulateArrays(filesHex, filesDecimal, filesBinary); // Passes a reference to the memory address of the above arrays for them to be populated
             // Create our main storage object that will be passed around to every plugin
-            dataStorage = new PluginInterface.DataStorage(HandleSettingsFileIO(), filesHex, filesDecimal, filesBinary, true); 
+            dataStorage = new PluginInterface.DataStorage(HandleSettingsFileIO(), filesHex, filesDecimal, filesBinary, true, fileName); 
 
             writerTask = Task.Run(() => FileWriterTaskMethod(), cancellationTokenSource.Token);
 
+            // The following populates the dictionary for PE's
             componentMap.Add("everything", new Everything(dataStorage, filesHex.GetLength(0)));
             if (GetComponentFromMap("everything").EndPoint <= 2) return; // The file is esentially blank  
 

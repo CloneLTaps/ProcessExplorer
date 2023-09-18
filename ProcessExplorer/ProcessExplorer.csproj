@@ -43,11 +43,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="plugins\" />
-    <Folder Include="plugin_handler\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Reference Include="PluginInterface">
       <HintPath>..\PluginInterface\bin\Release\netcoreapp3.1\PluginInterface.dll</HintPath>
     </Reference>

@@ -4,20 +4,25 @@ using System.Drawing;
 using System.Windows.Forms;
 using System.IO;
 using ProcessExplorer.components.impl;
-using ProcessExplorer.components;
+using System.Collections.Generic;
+using PluginInterface;
 
 namespace ProcessExplorer
 {
     public partial class Form1 : Form
     {
+        private readonly List<PluginInterface.IPlugin> loadedPlugins = new List<PluginInterface.IPlugin>();
+        private readonly List<PluginInterface.IPlugin> initializedPlugins = new List<PluginInterface.IPlugin>();
+
         private readonly ContextMenuStrip fileContextMenu = new ContextMenuStrip();
         private readonly ContextMenuStrip settingsMenu = new ContextMenuStrip();
         private string selectedComponent = "null";
         private CharacterSet selectedCharacter = CharacterSet.ASCII;
         private ProcessHandler processHandler;
 
-        public Form1()
+        public Form1(List<PluginInterface.IPlugin> loadedPlugins)
         {
+            this.loadedPlugins = loadedPlugins;
             InitializeComponent();
             Text = "Process Explorer";
 
@@ -146,9 +151,22 @@ namespace ProcessExplorer
                         string selectedFilePath = openFileDialog.FileName;
                         try
                         {
+                            foreach (var plugin in loadedPlugins)
+                            {   // Cleanup our plugins so that the data can be reclaculated for the next file
+                                plugin.Cleanup();
+                            }
+
                             treeView.Nodes.Clear();
+                            initializedPlugins.Clear();
+
                             using FileStream fileStream = new FileStream(selectedFilePath, FileMode.Open, FileAccess.Read);
                             processHandler = new ProcessHandler(fileStream);
+
+                            foreach (var plugin in loadedPlugins)
+                            {   // This will check to see if this loaded plugin is compatible with the current file format
+                                if (plugin.Initialized(processHandler.dataStorage)) initializedPlugins.Add(plugin);
+                            }
+
                             Setup();
                         }
                         catch (Exception ex)
@@ -161,13 +179,13 @@ namespace ProcessExplorer
             else if(text == "Save")
             {
                 fileContextMenu.Close();
-                if (processHandler == null || processHandler.FileName == null) return;
+                if (processHandler == null || processHandler.dataStorage == null) return;
 
                 SaveFileDialog saveFileDialog = new SaveFileDialog
                 {
                     Filter = "All Files (*.*)|*.*",
                     Title = "Save File As",
-                    FileName = processHandler.FileName,
+                    FileName = processHandler.dataStorage.FileName,
                     InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
                 };
 
@@ -184,84 +202,72 @@ namespace ProcessExplorer
             }
         }
 
+        private void AppendMyTreeNodesToTreeNode(MyTreeNode myTreeNode, TreeNode treeNode)
+        {
+            // Skip the first index, assuming it's the generic name.
+            for (int i = 0; i < myTreeNode.Children.Count; i++)
+            {
+                MyTreeNode childMyTreeNode = myTreeNode.Children[i];
+                TreeNode childTreeNode = new TreeNode(childMyTreeNode.Data);
+
+                // Add the child TreeNode to the parent TreeNode.
+                treeNode.Nodes.Add(childTreeNode);
+
+                // Recursively add child nodes to the current child TreeNode.
+                AppendMyTreeNodesToTreeNode(childMyTreeNode, childTreeNode);
+            }
+        }
+
+
         private void Setup()
         {
-            TreeNode rootNode = new TreeNode(processHandler.FileName);
+           TreeNode rootNode = new TreeNode(processHandler.dataStorage.FileName);
 
-            TreeNode dosHeaderNode = new TreeNode("DOS Header");
-            TreeNode dosStubNode = new TreeNode("DOS Stub");
-            TreeNode peHeaderNode = new TreeNode("PE Header");
-            TreeNode optionalPeHeaderNode = new TreeNode("Optional PE Header");
+            // Plugins will override my node
+            SuperHeader dosHeader = processHandler.GetComponentFromMap("dos header");
+            if (dosHeader != null && !dosHeader.FailedToInitlize) rootNode = SetupDefaultTreeNodes();
 
-            TreeNode certifcationTable = new TreeNode("Certificate Table");
-            bool addCertifcationTable = false;
+            foreach (var plugin in initializedPlugins)
+            {   // Now we need to add all of our loaded plugins headers into the temp map
+                MyTreeNode myTreeNode = plugin.RecieveTreeNodes(); // Add the TreeNode to the parent TreeNodeCollection
 
-            PluginInterface.SuperHeader optionalPeHeader = processHandler.GetComponentFromMap(optionalPeHeaderNode.Text.ToLower());
-            if (optionalPeHeader != null && !optionalPeHeader.FailedToInitlize) peHeaderNode.Nodes.Add(optionalPeHeaderNode);
-
-            TreeNode optionalPeHeader64Node = new TreeNode("Optional PE Header 64");
-            PluginInterface.SuperHeader optionalPeHeader64 = processHandler.GetComponentFromMap(optionalPeHeader64Node.Text.ToLower());
-            if (optionalPeHeader64 != null && !optionalPeHeader64.FailedToInitlize && ((OptionalPeHeader)optionalPeHeader).peThirtyTwoPlus)
-            {
-                peHeaderNode.Nodes.Add(optionalPeHeader64Node);
-                TreeNode optionalPeHeaderDataDirectories = new TreeNode("Optional PE Header Data Directories");
-                peHeaderNode.Nodes.Add(optionalPeHeaderDataDirectories);
-
-                OptionalPeHeaderDataDirectories dataDirectories = (OptionalPeHeaderDataDirectories) processHandler.GetComponentFromMap(optionalPeHeaderDataDirectories.Text.ToLower());
-                if (dataDirectories != null && !dataDirectories.FailedToInitlize && dataDirectories.CertificateTablePointer > 0 && dataDirectories.CertificateTableSize > 0)
-                    addCertifcationTable = true;
-            }
-
-            TreeNode optionalPeHeader32Node = new TreeNode("Optional PE Header 32");
-            PluginInterface.SuperHeader optionalPeHeader32 = processHandler.GetComponentFromMap(optionalPeHeader32Node.Text.ToLower());
-            if (optionalPeHeader32 != null && !optionalPeHeader32.FailedToInitlize && !((OptionalPeHeader)optionalPeHeader).peThirtyTwoPlus)
-            {
-                peHeaderNode.Nodes.Add(optionalPeHeader32Node);
-                TreeNode optionalPeHeaderDataDirectories = new TreeNode("Optional PE Header Data Directories");
-                peHeaderNode.Nodes.Add(optionalPeHeaderDataDirectories);
-
-                OptionalPeHeaderDataDirectories dataDirectories = (OptionalPeHeaderDataDirectories)processHandler.GetComponentFromMap(optionalPeHeaderDataDirectories.Text.ToLower());
-                if (dataDirectories != null && !dataDirectories.FailedToInitlize && dataDirectories.CertificateTablePointer > 0 && dataDirectories.CertificateTableSize > 0)
-                    addCertifcationTable = true;
-            }
-
-            TreeNode mainSectionNode = new TreeNode("Sections");
-
-            foreach (var map in processHandler.componentMap)
-            {
-                PluginInterface.SuperHeader header = map.Value;
-                string compString = header.Component.ToString();
-                if (!compString.Contains("section header")) continue;
-
-                TreeNode sectionNode = new TreeNode("");
-                sectionNode.Text = header.Component;
-
-                foreach (var innerMap in processHandler.componentMap)
+                if (myTreeNode != null)
                 {
-                    PluginInterface.SuperHeader body = innerMap.Value;
-                    string newCompString = body.Component.ToString();
-                   
-                    if (!newCompString.Contains("section body") || compString.Replace("section header", "") != newCompString.Replace("section body", "")) continue;
+                    Stack<MyTreeNode> stack = new Stack<MyTreeNode>();
+                    stack.Push(myTreeNode);
 
-                    TreeNode sectionBodyNode = new TreeNode("")
+                    while (stack.Count > 0)
                     {
-                        Text = body.Component
-                    };
-                    sectionNode.Nodes.Add(sectionBodyNode);
-                    break;
+                        MyTreeNode currentNode = stack.Pop();
+
+                        // Push child nodes onto the stack in reverse order (to process them in the correct order)
+                        for (int i = currentNode.Children.Count - 1; i >= 0; i--)
+                        {
+                            stack.Push(currentNode.Children[i]);
+                        }
+                    }
+                    AppendMyTreeNodesToTreeNode(myTreeNode, rootNode);
                 }
-                mainSectionNode.Nodes.Add(sectionNode); // Add the main section node for each section to our parent node
+
+                Stack<TreeNode> stack2 = new Stack<TreeNode>();
+                stack2.Push(rootNode);
+
+                while (stack2.Count > 0)
+                {
+                    TreeNode currentNode = stack2.Pop();
+
+                    // Push child nodes onto the stack in reverse order (to process them in the correct order)
+                    for (int i = currentNode.Nodes.Count - 1; i >= 0; i--)
+                    {
+                        stack2.Push(currentNode.Nodes[i]);
+                    }
+                }
+
+                foreach (var entry in plugin.RecieveCompnents())
+                {   // Plugins will be allowed to override my PE headers
+                    processHandler.componentMap.Add(entry.Key, entry.Value);
+                }
             }
-
-            PluginInterface.SuperHeader dosHeader = processHandler.GetComponentFromMap("dos header");
-            PluginInterface.SuperHeader dosStub = processHandler.GetComponentFromMap("dos stub");
-            PluginInterface.SuperHeader peHeader = processHandler.GetComponentFromMap("pe header");
-            if (dosHeader != null && !dosHeader.FailedToInitlize) rootNode.Nodes.Add(dosHeaderNode);
-            if (dosStub != null && !dosStub.FailedToInitlize) rootNode.Nodes.Add(dosStubNode);
-            if (peHeader != null && !peHeader.FailedToInitlize) rootNode.Nodes.Add(peHeaderNode);
-
-            if(mainSectionNode.Nodes.Count > 0) rootNode.Nodes.Add(mainSectionNode);
-            if(addCertifcationTable) rootNode.Nodes.Add(certifcationTable);
 
             // Add all of the nodes to the tree
             treeView.Nodes.Add(rootNode);
@@ -291,6 +297,89 @@ namespace ProcessExplorer
             dataGridView.CellValueNeeded += DataGridView_CellValueNeeded;
             TriggerRedraw();
         }
+
+        private TreeNode SetupDefaultTreeNodes()
+        {
+            TreeNode rootNode = new TreeNode(processHandler.dataStorage.FileName);
+
+            // The following handles the PE headers that were hard coded into ProcessExplorer due to this being its primary objective
+            TreeNode dosHeaderNode = new TreeNode("DOS Header");
+            TreeNode dosStubNode = new TreeNode("DOS Stub");
+            TreeNode peHeaderNode = new TreeNode("PE Header");
+            TreeNode optionalPeHeaderNode = new TreeNode("Optional PE Header");
+
+            TreeNode certifcationTable = new TreeNode("Certificate Table");
+            bool addCertifcationTable = false;
+
+            SuperHeader optionalPeHeader = processHandler.GetComponentFromMap(optionalPeHeaderNode.Text.ToLower());
+            if (optionalPeHeader != null && !optionalPeHeader.FailedToInitlize) peHeaderNode.Nodes.Add(optionalPeHeaderNode);
+
+            TreeNode optionalPeHeader64Node = new TreeNode("Optional PE Header 64");
+            SuperHeader optionalPeHeader64 = processHandler.GetComponentFromMap(optionalPeHeader64Node.Text.ToLower());
+            if (optionalPeHeader64 != null && !optionalPeHeader64.FailedToInitlize && ((OptionalPeHeader)optionalPeHeader).peThirtyTwoPlus)
+            {
+                peHeaderNode.Nodes.Add(optionalPeHeader64Node);
+                TreeNode optionalPeHeaderDataDirectories = new TreeNode("Optional PE Header Data Directories");
+                peHeaderNode.Nodes.Add(optionalPeHeaderDataDirectories);
+
+                OptionalPeHeaderDataDirectories dataDirectories = (OptionalPeHeaderDataDirectories)processHandler.GetComponentFromMap(optionalPeHeaderDataDirectories.Text.ToLower());
+                if (dataDirectories != null && !dataDirectories.FailedToInitlize && dataDirectories.CertificateTablePointer > 0 && dataDirectories.CertificateTableSize > 0)
+                    addCertifcationTable = true;
+            }
+
+            TreeNode optionalPeHeader32Node = new TreeNode("Optional PE Header 32");
+            SuperHeader optionalPeHeader32 = processHandler.GetComponentFromMap(optionalPeHeader32Node.Text.ToLower());
+            if (optionalPeHeader32 != null && !optionalPeHeader32.FailedToInitlize && !((OptionalPeHeader)optionalPeHeader).peThirtyTwoPlus)
+            {
+                peHeaderNode.Nodes.Add(optionalPeHeader32Node);
+                TreeNode optionalPeHeaderDataDirectories = new TreeNode("Optional PE Header Data Directories");
+                peHeaderNode.Nodes.Add(optionalPeHeaderDataDirectories);
+
+                OptionalPeHeaderDataDirectories dataDirectories = (OptionalPeHeaderDataDirectories)processHandler.GetComponentFromMap(optionalPeHeaderDataDirectories.Text.ToLower());
+                if (dataDirectories != null && !dataDirectories.FailedToInitlize && dataDirectories.CertificateTablePointer > 0 && dataDirectories.CertificateTableSize > 0)
+                    addCertifcationTable = true;
+            }
+
+            TreeNode mainSectionNode = new TreeNode("Sections");
+
+            foreach (var map in processHandler.componentMap)
+            {
+                SuperHeader header = map.Value;
+                string compString = header.Component.ToString();
+                if (!compString.Contains("section header")) continue;
+
+                TreeNode sectionNode = new TreeNode("");
+                sectionNode.Text = header.Component;
+
+                foreach (var innerMap in processHandler.componentMap)
+                {
+                    SuperHeader body = innerMap.Value;
+                    string newCompString = body.Component.ToString();
+
+                    if (!newCompString.Contains("section body") || compString.Replace("section header", "") != newCompString.Replace("section body", "")) continue;
+
+                    TreeNode sectionBodyNode = new TreeNode("")
+                    {
+                        Text = body.Component
+                    };
+                    sectionNode.Nodes.Add(sectionBodyNode);
+                    break;
+                }
+                mainSectionNode.Nodes.Add(sectionNode); // Add the main section node for each section to our parent node
+            }
+
+            PluginInterface.SuperHeader dosStub = processHandler.GetComponentFromMap("dos stub");
+            PluginInterface.SuperHeader peHeader = processHandler.GetComponentFromMap("pe header");
+            rootNode.Nodes.Add(dosHeaderNode);
+            if (dosStub != null && !dosStub.FailedToInitlize) rootNode.Nodes.Add(dosStubNode);
+            if (peHeader != null && !peHeader.FailedToInitlize) rootNode.Nodes.Add(peHeaderNode);
+
+            if (mainSectionNode.Nodes.Count > 0) rootNode.Nodes.Add(mainSectionNode);
+            if (addCertifcationTable) rootNode.Nodes.Add(certifcationTable);
+
+            return rootNode;
+        }
+
 
         private void ToolStripButton_Click(object sender, EventArgs e)
         {
@@ -391,13 +480,11 @@ namespace ProcessExplorer
                 TreeNode clickedNode = e.Node;
                 string nodeText = clickedNode.Text;
                 if (nodeText == "Sections") return;
-                if (nodeText.Contains(processHandler.FileName)) nodeText = "everything";
+                if (nodeText.Contains(processHandler.dataStorage.FileName)) nodeText = "everything";
 
                 int previousRowCount = processHandler.GetComponentsRowIndexCount(selectedComponent);
                 string selected = nodeText.ToLower();
                 int newRowCount = processHandler.GetComponentsRowIndexCount(selected);
-
-                Console.WriteLine("Selected:" + selected.ToString() + " PreviousCount:" + previousRowCount + " NewRowCount:" + newRowCount);
   
                 if (selected == selectedComponent) return;
                 selectedComponent = selected;
