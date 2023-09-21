@@ -58,6 +58,12 @@ namespace ProcessExplorer
 
             writerTask = Task.Run(() => FileWriterTaskMethod(), cancellationTokenSource.Token);
 
+            CalculateHeaders(filesHex);
+        }
+
+        public void CalculateHeaders(string[,] filesHex)
+        {
+
             // The following populates the dictionary for PE's
             componentMap.Add("everything", new Everything(dataStorage, filesHex.GetLength(0)));
             if (GetComponentFromMap("everything").EndPoint <= 2) return; // The file is esentially blank  
@@ -84,7 +90,7 @@ namespace ProcessExplorer
                     OptionalPeHeaderDataDirectories dataDirectories = new OptionalPeHeaderDataDirectories(dataStorage, GetComponentFromMap("optional pe header 64").EndPoint);
                     componentMap.Add("optional pe header data directories", dataDirectories);
 
-                    if(dataDirectories.CertificateTablePointer > 0 && dataDirectories.CertificateTableSize > 0)
+                    if (dataDirectories.CertificateTablePointer > 0 && dataDirectories.CertificateTableSize > 0)
                     {
                         componentMap.Add("certificate table", new CertificationTable(dataDirectories.CertificateTablePointer, dataDirectories.CertificateTableSize));
                     }
@@ -369,7 +375,7 @@ namespace ProcessExplorer
 
         private Settings CreateSettingsFile()
         {
-            Settings settings = new Settings(true, true, false, true);
+            Settings settings = new Settings(true, true, false, true, true);
             string json = JsonConvert.SerializeObject(settings, Formatting.Indented);
             File.WriteAllText(FilePath, json);
             return settings;

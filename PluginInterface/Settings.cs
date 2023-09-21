@@ -9,12 +9,15 @@
 
         public bool ReterunToTop { get; set; }
 
-        public Settings(bool remozeZeros, bool treatNullAsPeriod, bool offsetsInHex, bool reterunToTop)
+        public bool RecalculateHeaders { get; set; }
+
+        public Settings(bool remozeZeros, bool treatNullAsPeriod, bool offsetsInHex, bool reterunToTop, bool recalculateHeaders)
         {
             RemoveZeros = remozeZeros;
             TreatNullAsPeriod = treatNullAsPeriod;
             OffsetsInHex = offsetsInHex;
             ReterunToTop = reterunToTop;
+            RecalculateHeaders = recalculateHeaders;
         }
     }
 }

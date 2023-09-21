@@ -1,10 +1,11 @@
-﻿
+﻿using System;
+
 namespace ProcessExplorer.components.impl
 {
     class SectionBody : PluginInterface.SuperHeader
     {
 
-        public SectionBody(int startingPoint, int endPoint, string sectionType) : base("section body", 1, 3)
+        public SectionBody(int startingPoint, int endPoint, string sectionType) : base("section body", (int)Math.Ceiling((endPoint - startingPoint) / 16.0), 3)
         {
             Component = sectionType;
             StartPoint = startingPoint;

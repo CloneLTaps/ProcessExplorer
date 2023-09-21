@@ -46,6 +46,10 @@ namespace ProcessExplorer
             setting4.Click += Settings_Click;
             settingsMenu.Items.Add(setting4);
 
+            ToolStripMenuItem setting5 = new ToolStripMenuItem("Reclculate header on edit");
+            setting5.Click += Settings_Click;
+            settingsMenu.Items.Add(setting5);
+
             dataGridView.ColumnHeadersDefaultCellStyle.BackColor = SystemColors.ControlDark;
             dataGridView.AlternatingRowsDefaultCellStyle.BackColor = SystemColors.ControlDark;
             dataGridView.RowHeadersDefaultCellStyle.BackColor = SystemColors.ControlDark;
@@ -131,6 +135,9 @@ namespace ProcessExplorer
                 case "Treat null as '.'": processHandler.dataStorage.Settings.TreatNullAsPeriod = settingItem.Checked;
                     processHandler.UpdateSettingsFile(true);
                     break;
+                case "Reclculate header on edit": processHandler.dataStorage.Settings.RecalculateHeaders = settingItem.Checked;
+                    processHandler.UpdateSettingsFile(true);
+                    break;
             }
         }
 
@@ -158,16 +165,11 @@ namespace ProcessExplorer
 
                             treeView.Nodes.Clear();
                             initializedPlugins.Clear();
+                            if (processHandler != null) processHandler.StopThread();
 
                             using FileStream fileStream = new FileStream(selectedFilePath, FileMode.Open, FileAccess.Read);
                             processHandler = new ProcessHandler(fileStream);
-
-                            foreach (var plugin in loadedPlugins)
-                            {   // This will check to see if this loaded plugin is compatible with the current file format
-                                if (plugin.Initialized(processHandler.dataStorage)) initializedPlugins.Add(plugin);
-                            }
-
-                            Setup();
+                            Setup(false);
                         }
                         catch (Exception ex)
                         {
@@ -219,9 +221,24 @@ namespace ProcessExplorer
         }
 
 
-        private void Setup()
+        private void Setup(bool reclculateHeaders)
         {
-           TreeNode rootNode = new TreeNode(processHandler.dataStorage.FileName);
+            // This will check to see if this loaded plugin is compatible with the current file format
+
+            if (reclculateHeaders)
+            {   // This will clear all the current data Tree Nodes and clear the map of components so we can recalcualte them
+                treeView.Nodes.Clear();
+                processHandler.componentMap.Clear();
+                processHandler.CalculateHeaders(processHandler.dataStorage.FilesHex);
+            }
+
+            initializedPlugins.Clear();
+            foreach (var plugin in loadedPlugins)
+            {   // This needs to be called when recalulating and when first starting up
+                if (plugin.Initialized(processHandler.dataStorage)) initializedPlugins.Add(plugin);
+            }
+
+            TreeNode rootNode = new TreeNode(processHandler.dataStorage.FileName);
 
             // Plugins will override my node
             SuperHeader dosHeader = processHandler.GetComponentFromMap("dos header");
@@ -249,22 +266,9 @@ namespace ProcessExplorer
                     AppendMyTreeNodesToTreeNode(myTreeNode, rootNode);
                 }
 
-                Stack<TreeNode> stack2 = new Stack<TreeNode>();
-                stack2.Push(rootNode);
-
-                while (stack2.Count > 0)
-                {
-                    TreeNode currentNode = stack2.Pop();
-
-                    // Push child nodes onto the stack in reverse order (to process them in the correct order)
-                    for (int i = currentNode.Nodes.Count - 1; i >= 0; i--)
-                    {
-                        stack2.Push(currentNode.Nodes[i]);
-                    }
-                }
-
                 foreach (var entry in plugin.RecieveCompnents())
                 {   // Plugins will be allowed to override my PE headers
+                    if (processHandler.componentMap.ContainsKey(entry.Key)) processHandler.componentMap.Remove(entry.Key);
                     processHandler.componentMap.Add(entry.Key, entry.Value);
                 }
             }
@@ -272,30 +276,41 @@ namespace ProcessExplorer
             // Add all of the nodes to the tree
             treeView.Nodes.Add(rootNode);
 
-            // This will auto check the following settings on startup
-            foreach (ToolStripItem item in settingsMenu.Items)
+            
+            if(!reclculateHeaders)
             {
-                if (item is ToolStripMenuItem menuItem)
+                // This will auto check the following settings on startup
+                foreach (ToolStripItem item in settingsMenu.Items)
                 {
-                    switch(menuItem.Text)
+                    if (item is ToolStripMenuItem menuItem)
                     {
-                        case "Remove extra zeros": menuItem.Checked = processHandler.dataStorage.Settings.RemoveZeros;
-                            break;
-                        case "Return to top": menuItem.Checked = processHandler.dataStorage.Settings.ReterunToTop;
-                            break;
-                        case "Treat null as '.'": menuItem.Checked = processHandler.dataStorage.Settings.TreatNullAsPeriod;
-                            break;
-                        case "Display offsets in hex": menuItem.Checked = processHandler.dataStorage.Settings.OffsetsInHex;
-                            break;
+                        switch (menuItem.Text)
+                        {
+                            case "Remove extra zeros":
+                                menuItem.Checked = processHandler.dataStorage.Settings.RemoveZeros;
+                                break;
+                            case "Return to top":
+                                menuItem.Checked = processHandler.dataStorage.Settings.ReterunToTop;
+                                break;
+                            case "Treat null as '.'":
+                                menuItem.Checked = processHandler.dataStorage.Settings.TreatNullAsPeriod;
+                                break;
+                            case "Display offsets in hex":
+                                menuItem.Checked = processHandler.dataStorage.Settings.OffsetsInHex;
+                                break;
+                            case "Reclculate header on edit":
+                                menuItem.Checked = processHandler.dataStorage.Settings.RecalculateHeaders;
+                                break;
+                        }
                     }
                 }
-            }
 
-            // This will trigger the data to be dislayed
-            selectedComponent = "everything";
-            dataGridView.RowCount = processHandler.dataStorage.GetFilesRows() + 1; //processHandler.GetComponentFromMap(selectedComponent). GetFilesRows();
-            dataGridView.CellValueNeeded += DataGridView_CellValueNeeded;
-            TriggerRedraw();
+                // This will trigger the data to be dislayed
+                selectedComponent = "everything";
+                dataGridView.RowCount = processHandler.dataStorage.GetFilesRows() + 1; 
+                dataGridView.CellValueNeeded += DataGridView_CellValueNeeded;
+                TriggerRedraw();
+            }
         }
 
         private TreeNode SetupDefaultTreeNodes()
@@ -588,7 +603,7 @@ namespace ProcessExplorer
 
             SuperHeader selectedHeader = processHandler.GetComponentFromMap(selectedComponent);
             if (selectedHeader == null || row >= selectedHeader.RowSize || doubleByteButton.Checked) return;
-           
+
             if (selectedComponent == "everything")
             {   // if this is true then that means I need to update the other data source which first requies me to customize the data to the fit the structure
                 string[,] values = processHandler.GetValueVariations(newValue, hexButton.Checked, decimalButton.Checked);
@@ -606,9 +621,8 @@ namespace ProcessExplorer
                     SuperHeader comp = map.Value;
                     if (comp.Component != "everything" && comp.StartPoint <= offset && comp.EndPoint >= offset)
                     {
-                        //processHandler.RecalculateHeaders(comp);
                         TriggerRedraw();
-                        return;
+                        break;
                     }
                 }
             }
@@ -617,7 +631,17 @@ namespace ProcessExplorer
                 selectedHeader.UpdateData(row, newValue, hexButton.Checked, decimalButton.Checked, processHandler.dataStorage);
                 TriggerRedraw();
             }
-            Console.WriteLine(" ");
+
+            // This will recalculate all our headers and for all plugins. This is useful since fields can change like the size and checksums
+            if (processHandler.dataStorage.Settings.RecalculateHeaders)
+            {
+                Setup(true);
+
+                foreach (var plugin in initializedPlugins)
+                {
+                    plugin.ReclaculateHeaders(row, processHandler.dataStorage);
+                }
+            }
         }
 
         private void DataGridView_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
