@@ -9,6 +9,7 @@ using Newtonsoft.Json;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
+using PluginInterface;
 
 namespace ProcessExplorer
 {
@@ -16,22 +17,22 @@ namespace ProcessExplorer
     {
         public string FilePath { get; private set; }
 
-        public PluginInterface.DataStorage dataStorage { get; private set; }
+        public DataStorage dataStorage { get; private set; }
 
-        public PluginInterface.Enums.OffsetType Offset { get; set; }
+        public Enums.OffsetType Offset { get; set; }
 
         private int HeaderEndPoint { get; set; }
 
         // These following fields are all only initlized inside the constructor and thus marked 'readonly' 
-        public readonly Dictionary<string, PluginInterface.SuperHeader> componentMap = new Dictionary<string, PluginInterface.SuperHeader>();
+        public readonly Dictionary<string, SuperHeader> componentMap = new Dictionary<string, SuperHeader>();
         private readonly FileStream file;
 
-        private readonly BlockingCollection<PluginInterface.Settings> settingsQueue = new BlockingCollection<PluginInterface.Settings>();
+        private readonly BlockingCollection<Settings> settingsQueue = new BlockingCollection<Settings>();
         private readonly CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
         private readonly Task writerTask;
 
         /* This prevents us from getting an error if the map does not contain a specific ProcessComponent */
-        public PluginInterface.SuperHeader GetComponentFromMap(string comp)
+        public SuperHeader GetComponentFromMap(string comp)
         {
             if (!componentMap.ContainsKey(comp)) return null;
             return componentMap[comp];
@@ -43,7 +44,7 @@ namespace ProcessExplorer
 
             this.file = file;
             string fileName = new FileInfo(file.Name).Name;
-            Offset = PluginInterface.Enums.OffsetType.FILE_OFFSET;
+            Offset = Enums.OffsetType.FILE_OFFSET;
 
             // This specifies that the array will be 16 across and (file.Length / 16) down
             // I am precomputing these values so that I dont have to recompute them when the user switches windows or modes
@@ -53,7 +54,7 @@ namespace ProcessExplorer
 
             PopulateArrays(filesHex, filesDecimal, filesBinary); // Passes a reference to the memory address of the above arrays for them to be populated
             // Create our main storage object that will be passed around to every plugin
-            dataStorage = new PluginInterface.DataStorage(HandleSettingsFileIO(), filesHex, filesDecimal, filesBinary, true, fileName); 
+            dataStorage = new DataStorage(HandleSettingsFileIO(), filesHex, filesDecimal, filesBinary, true, fileName); 
 
             writerTask = Task.Run(() => FileWriterTaskMethod(), cancellationTokenSource.Token);
 
@@ -148,7 +149,7 @@ namespace ProcessExplorer
                         {   // This means we must be at the 8th byte which always should be null terminating if its a valid section header name
                             if(b == 00)
                             {
-                                string udpatedAscii = ascii.Replace(" ", "").ToLower(); // Remove the nul characters which were swapped to a space
+                                string udpatedAscii = ascii.Replace(" ", "").ToLower(); // Remove the null characters which were swapped to a space
                                 string sectionType = udpatedAscii + " section header";
                                 string sectionBodyType = udpatedAscii + " section body";
                                 SectionHeader header = new SectionHeader(dataStorage, headerNameStart, sectionType);
@@ -301,30 +302,30 @@ namespace ProcessExplorer
 
         public int GetComponentsRowIndexCount(string component)
         {
-            PluginInterface.SuperHeader header = GetComponentFromMap(component);
+            SuperHeader header = GetComponentFromMap(component);
             if (header == null) return 0;
             return header.RowSize;
         }
 
         public int GetComponentsColumnIndexCount(string component)
         {
-            PluginInterface.SuperHeader header = GetComponentFromMap(component);
+            SuperHeader header = GetComponentFromMap(component);
             if (header == null) return 0;
             return header.RowSize;
         }
 
 
         /* Returns data that will fill up the DataDisplayView */
-        public string GetValue(int row, int column, bool doubleByte, string component, PluginInterface.Enums.DataType type)
+        public string GetValue(int row, int column, bool doubleByte, string component, Enums.DataType type)
         {
-            PluginInterface.SuperHeader header = GetComponentFromMap(component);
+            SuperHeader header = GetComponentFromMap(component);
             if (header == null) return "";
-            return header.GetData(row, column, type, doubleByte, Offset == PluginInterface.Enums.OffsetType.FILE_OFFSET, dataStorage);
+            return header.GetData(row, column, type, doubleByte, Offset == Enums.OffsetType.FILE_OFFSET, dataStorage);
         }
          
         public void OpenDescrptionForm(string component, int row)
         {
-            PluginInterface.SuperHeader header = GetComponentFromMap(component);
+            SuperHeader header = GetComponentFromMap(component);
             if(header != null) header.OpenForm(row, dataStorage);
         }
 
@@ -366,15 +367,15 @@ namespace ProcessExplorer
         }
 
 
-        private PluginInterface.Settings CreateSettingsFile()
+        private Settings CreateSettingsFile()
         {
-            PluginInterface.Settings settings = new PluginInterface.Settings(true, true, false, true);
+            Settings settings = new Settings(true, true, false, true);
             string json = JsonConvert.SerializeObject(settings, Formatting.Indented);
             File.WriteAllText(FilePath, json);
             return settings;
         }
 
-        private PluginInterface.Settings HandleSettingsFileIO()
+        private Settings HandleSettingsFileIO()
         {
             FilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
 
@@ -386,7 +387,7 @@ namespace ProcessExplorer
                 if (settingsContents == null || settingsContents == "") 
                     return CreateSettingsFile();
 
-                PluginInterface.Settings deserializedObject = JsonConvert.DeserializeObject<PluginInterface.Settings>(settingsContents);
+                Settings deserializedObject = JsonConvert.DeserializeObject<Settings>(settingsContents);
                 if (deserializedObject == null)
                     return CreateSettingsFile();
 

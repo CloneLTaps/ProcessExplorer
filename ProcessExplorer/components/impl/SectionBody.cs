@@ -9,6 +9,9 @@ namespace ProcessExplorer.components.impl
             Component = sectionType;
             StartPoint = startingPoint;
             EndPoint = endPoint;
+
+            Size = null;
+            Desc = null;
         }
 
         public override void OpenForm(int row, PluginInterface.DataStorage dataStorage)

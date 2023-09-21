@@ -11,8 +11,8 @@ namespace ProcessExplorer
 {
     public partial class Form1 : Form
     {
-        private readonly List<PluginInterface.IPlugin> loadedPlugins = new List<PluginInterface.IPlugin>();
-        private readonly List<PluginInterface.IPlugin> initializedPlugins = new List<PluginInterface.IPlugin>();
+        private readonly List<IPlugin> loadedPlugins = new List<IPlugin>();
+        private readonly List<IPlugin> initializedPlugins = new List<IPlugin>();
 
         private readonly ContextMenuStrip fileContextMenu = new ContextMenuStrip();
         private readonly ContextMenuStrip settingsMenu = new ContextMenuStrip();
@@ -20,7 +20,7 @@ namespace ProcessExplorer
         private CharacterSet selectedCharacter = CharacterSet.ASCII;
         private ProcessHandler processHandler;
 
-        public Form1(List<PluginInterface.IPlugin> loadedPlugins)
+        public Form1(List<IPlugin> loadedPlugins)
         {
             this.loadedPlugins = loadedPlugins;
             InitializeComponent();
@@ -368,8 +368,8 @@ namespace ProcessExplorer
                 mainSectionNode.Nodes.Add(sectionNode); // Add the main section node for each section to our parent node
             }
 
-            PluginInterface.SuperHeader dosStub = processHandler.GetComponentFromMap("dos stub");
-            PluginInterface.SuperHeader peHeader = processHandler.GetComponentFromMap("pe header");
+            SuperHeader dosStub = processHandler.GetComponentFromMap("dos stub");
+            SuperHeader peHeader = processHandler.GetComponentFromMap("pe header");
             rootNode.Nodes.Add(dosHeaderNode);
             if (dosStub != null && !dosStub.FailedToInitlize) rootNode.Nodes.Add(dosStubNode);
             if (peHeader != null && !peHeader.FailedToInitlize) rootNode.Nodes.Add(peHeaderNode);
@@ -420,7 +420,7 @@ namespace ProcessExplorer
                 if(fileOffsetButton.Checked)
                 {
                     relativeOffsetButton.Checked = false;
-                    processHandler.Offset = PluginInterface.Enums.OffsetType.FILE_OFFSET;
+                    processHandler.Offset = Enums.OffsetType.FILE_OFFSET;
                     // RelativeOffset and FileOffsets are the same if you are viewing everything 
                     if (selectedComponent != "everything")
                         TriggerRedraw();
@@ -432,7 +432,7 @@ namespace ProcessExplorer
                 if(relativeOffsetButton.Checked)
                 {
                     fileOffsetButton.Checked = false;
-                    processHandler.Offset = PluginInterface.Enums.OffsetType.RELATIVE_OFFSET;
+                    processHandler.Offset = Enums.OffsetType.RELATIVE_OFFSET;
                     // RelativeOffset and FileOffsets are the same if you are viewing everything 
                     if (selectedComponent != "everything")
                         TriggerRedraw();
@@ -479,7 +479,7 @@ namespace ProcessExplorer
             {
                 TreeNode clickedNode = e.Node;
                 string nodeText = clickedNode.Text;
-                if (nodeText == "Sections") return;
+                if (nodeText == "Sections" || nodeText == "Chunks") return;
                 if (nodeText.Contains(processHandler.dataStorage.FileName)) nodeText = "everything";
 
                 int previousRowCount = processHandler.GetComponentsRowIndexCount(selectedComponent);
@@ -510,7 +510,7 @@ namespace ProcessExplorer
                 if (checkBox.Checked) replaceAll = true;
             }
 
-            PluginInterface.SuperHeader header = replaceAll ? processHandler.GetComponentFromMap("everything") : processHandler.GetComponentFromMap(selectedComponent);
+            SuperHeader header = replaceAll ? processHandler.GetComponentFromMap("everything") : processHandler.GetComponentFromMap(selectedComponent);
             int firstRow = (int)Math.Floor(header.StartPoint / 16.0);
 
             int count = 0;
@@ -586,14 +586,14 @@ namespace ProcessExplorer
             int row = e.RowIndex;
             string newValue = (string)e.Value;
 
-            PluginInterface.SuperHeader selectedHeader = processHandler.GetComponentFromMap(selectedComponent);
+            SuperHeader selectedHeader = processHandler.GetComponentFromMap(selectedComponent);
             if (selectedHeader == null || row >= selectedHeader.RowSize || doubleByteButton.Checked) return;
            
             if (selectedComponent == "everything")
             {   // if this is true then that means I need to update the other data source which first requies me to customize the data to the fit the structure
                 string[,] values = processHandler.GetValueVariations(newValue, hexButton.Checked, decimalButton.Checked);
 
-                int offset = int.Parse(selectedHeader.GetData(row, 0, PluginInterface.Enums.DataType.DECIMAL, false, false, processHandler.dataStorage)); // This gets the file offset in decimal form
+                int offset = int.Parse(selectedHeader.GetData(row, 0, Enums.DataType.DECIMAL, false, false, processHandler.dataStorage)); // This gets the file offset in decimal form
 
                 processHandler.dataStorage.FilesHex[row, column] = values[0, 0];
                 processHandler.dataStorage.FilesDecimal[row, column] = values[0, 1];
@@ -603,7 +603,7 @@ namespace ProcessExplorer
 
                 foreach (var map in processHandler.componentMap)
                 {
-                    PluginInterface.SuperHeader comp = map.Value;
+                    SuperHeader comp = map.Value;
                     if (comp.Component != "everything" && comp.StartPoint <= offset && comp.EndPoint >= offset)
                     {
                         //processHandler.RecalculateHeaders(comp);
@@ -628,7 +628,7 @@ namespace ProcessExplorer
 
         private void DataGridView_CellValueNeeded(object sender, DataGridViewCellValueEventArgs e)
         {
-            PluginInterface.Enums.DataType type = hexButton.Checked ? PluginInterface.Enums.DataType.HEX : decimalButton.Checked ? PluginInterface.Enums.DataType.DECIMAL : PluginInterface.Enums.DataType.BINARY;
+            Enums.DataType type = hexButton.Checked ? Enums.DataType.HEX : decimalButton.Checked ? Enums.DataType.DECIMAL : Enums.DataType.BINARY;
            /* Console.WriteLine("Comp:" + selectedComponent.ToString() + " Row:" + e.RowIndex + " Column:" + e.ColumnIndex + " Data:"
                 + processHandler.GetValue(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked, selectedComponent, type));*/
             e.Value = processHandler.GetValue(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked, selectedComponent, type);

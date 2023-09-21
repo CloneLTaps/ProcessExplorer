@@ -20,7 +20,13 @@ namespace PluginInterface
 
         public bool FailedToInitlize { get; protected set; }
 
+        public bool HasSetEndPoint { get; protected set; }
+
+        public bool FileFormatedLittleEndian { get; protected set; }
+
         public string Component { get; protected set; }
+
+        public readonly List<int> SkipList = new List<int>(); // This is used to specify index that should not have their data displayed 
 
         public Dictionary<int, string> Characteristics { get; protected set; }
 
@@ -31,9 +37,10 @@ namespace PluginInterface
             this.RowSize = rowSize;
 
             FailedToInitlize = false;
+            FileFormatedLittleEndian = true;
         }
 
-        public abstract void OpenForm(int row, PluginInterface.DataStorage dataStorage);
+        public abstract void OpenForm(int row, DataStorage dataStorage);
 
         protected void SetEndPoint()
         {
@@ -52,6 +59,9 @@ namespace PluginInterface
         {
             if (FailedToInitlize) return "";  // Something went wrong with this file so don't return any text
             if (Size != null && row >= Size.Length) return "";  // This returns the blank text for index larger than the size of our headers
+
+            if (column == 1 && SkipList.Contains(row)) return ""; // This ensures certain header data rows that often contains tons of info wont get displayed 
+            if (HasSetEndPoint && (column == 1 || column == 2) && StartPoint >= EndPoint) return ""; // This means this section does not contain any data
 
             if (Component == "everything")
             {
@@ -79,7 +89,15 @@ namespace PluginInterface
             if (Desc != null && column == 2) return Desc[row];  // This means its just asking for the custom description
 
             int relativeOfffset = 0;  // Amount of bytes into the row till we reach our target data relative to the start of this section
-            int bytes = Size == null ? (row == 0 ? mod16 : 16) : Size[row];  // How many bytes I need to read from the array
+            int bytes = Size == null ? (row == 0 ? (mod16 > 0 ? 16 - mod16 : 0) : 16) : Size[row];  // How many bytes I need to read from the array
+
+            if(Size == null && (column == 1 || column == 2))
+            {   // Some body sections / chunks may have less than a full row of data
+                int dif = EndPoint - StartPoint;
+                if(dif < 16) bytes = row == 0 ? dif : Math.Min(bytes, dif); // Handles the edge case where we are reading less than a full row of data
+                else bytes = Math.Min(bytes, EndPoint - (StartPoint + (row * 16) - mod16));
+            }
+
             if (Size != null)
             {   // The following is designed for headers
                 for (int i = 0; i < row; i++)
@@ -169,7 +187,7 @@ namespace PluginInterface
         {
             if (Size != null)
             {
-                Array.Reverse(hexPairs);
+                if(FileFormatedLittleEndian) Array.Reverse(hexPairs);
                 string bigEndian = string.Concat(hexPairs);
 
                 // Check if the result is all "0"s and convert to a single "0"
@@ -185,7 +203,7 @@ namespace PluginInterface
                     // This part changes the extra 0's into a single 0
                     string firstPart = hexPairs[index * 2 + 1];
                     string secondPart = hexPairs[index * 2];
-                    string combined = firstPart + secondPart;
+                    string combined = FileFormatedLittleEndian ? firstPart + secondPart : secondPart + firstPart;
                     if (removeZeros)
                     {
                         if (secondPart == "00" && firstPart == "00") combined = "0";
