@@ -49,12 +49,10 @@ namespace ProcessExplorer
             // This specifies that the array will be 16 across and (file.Length / 16) down
             // I am precomputing these values so that I dont have to recompute them when the user switches windows or modes
             string[,] filesHex = new string[(int)Math.Ceiling(file.Length / 16.0), 3];
-            string[,] filesDecimal = new string[(int)Math.Ceiling(file.Length / 16.0), 2];
-            string[,] filesBinary = new string[(int)Math.Ceiling(file.Length / 16.0), 2];
 
-            PopulateArrays(filesHex, filesDecimal, filesBinary); // Passes a reference to the memory address of the above arrays for them to be populated
+            PopulateArrays(filesHex); // Passes a reference to the memory address of the above arrays for them to be populated
             // Create our main storage object that will be passed around to every plugin
-            dataStorage = new DataStorage(HandleSettingsFileIO(), filesHex, filesDecimal, filesBinary, true, fileName); 
+            dataStorage = new DataStorage(HandleSettingsFileIO(), filesHex, true, fileName); 
 
             writerTask = Task.Run(() => FileWriterTaskMethod(), cancellationTokenSource.Token);
 
@@ -183,7 +181,7 @@ namespace ProcessExplorer
             return;
         }
 
-        private void PopulateArrays(string[,] filesHex, string[,] filesDecimal, string[,] filesBinary)
+        private void PopulateArrays(string[,] filesHex)
         {
             try
             {
@@ -211,12 +209,6 @@ namespace ProcessExplorer
                     filesHex[down, 0] = "0x" + (down * 16).ToString("X");
                     filesHex[down, 1] = hex;
                     filesHex[down, 2] = ascii;
-
-                    filesDecimal[down, 0] = (down * 16).ToString();
-                    filesDecimal[down, 1] = decimalNumbers;
-
-                    filesBinary[down, 0] = Convert.ToString(down * 16, 2);
-                    filesBinary[down, 1] = binary;
 
                     down++;
                 }
@@ -261,7 +253,7 @@ namespace ProcessExplorer
                 taken += take;
             }
 
-            dataStorage.UpdateArrays(filesHex, filesDecimal, null);
+            dataStorage.UpdateArrays(filesHex);
         }
 
         /* Here index 0 is hex, index 1 is decimal, and index 2 is binary */

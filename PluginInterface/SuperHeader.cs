@@ -202,8 +202,8 @@ namespace PluginInterface
             return dataType switch
             {
                 DataType.HEX => data.FilesHex[row, column],
-                DataType.DECIMAL => data.FilesDecimal[row, column],
-                DataType.BINARY => data.FilesBinary[row, column],
+                DataType.DECIMAL => data.GetFilesDecimal(row, column),
+                DataType.BINARY => data.GetFilesBinary(row, column),
                 _ => "",
             };
         }
@@ -246,14 +246,11 @@ namespace PluginInterface
 
             int offset = int.Parse(GetData(row, 0, DataType.DECIMAL, false, true, dataStorage)); // This gets the file offset in decimal form
             int everythingRow = (int)Math.Floor(offset / 16.0);
-            int everythingRowOffset = int.Parse(dataStorage.FilesDecimal[everythingRow, 0]);
+            int everythingRowOffset = int.Parse(dataStorage.GetFilesDecimal(everythingRow, 0));
             int dataByteLength = values.GetLength(0);
             int difference = offset - everythingRowOffset; // Difference between the headers data's offset and the main rows offset  
 
             dataStorage.FilesHex[everythingRow, 1] = dataStorage.ReplaceData(difference, dataByteLength, dataStorage.FilesHex[everythingRow, 1], values[0, 0], orignalLength, Component);
-            dataStorage.FilesDecimal[everythingRow, 1] = dataStorage.ReplaceData(difference, dataByteLength, dataStorage.FilesDecimal[everythingRow, 1], values[0, 1], orignalLength, Component);
-            dataStorage.FilesBinary[everythingRow, 1] = dataStorage.ReplaceData(difference, dataByteLength, dataStorage.FilesBinary[everythingRow, 1], values[0, 2], orignalLength, Component);
-
             dataStorage.UpdateASCII(dataStorage.FilesHex[everythingRow, 1], everythingRow);
         }
 

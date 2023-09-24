@@ -552,8 +552,6 @@ namespace ProcessExplorer
                                 string originalRow = processHandler.dataStorage.FilesHex[row, 1];
                                 string[,] values = processHandler.GetValueVariations(originalRow.Replace(GetHexFromAscii(search), GetHexFromAscii(replace)), true, decimalButton.Checked); // This is always in hex
                                 processHandler.dataStorage.FilesHex[row, 1] = values[0, 0];
-                                processHandler.dataStorage.FilesDecimal[row, 1] = values[0, 1];
-                                processHandler.dataStorage.FilesBinary[row, 1] = values[0, 2];
                                 processHandler.dataStorage.UpdateASCII(values[0, 0], row);
                                 TriggerRedraw();
                                 ++count;
@@ -668,8 +666,8 @@ namespace ProcessExplorer
                 {   // This is the common case where the length does not change thus we can just replace the bytes without refactoring the rows
                     string[,] values = processHandler.GetValueVariations(newValue, true, false);
                     processHandler.dataStorage.FilesHex[row, column] = values[0, 0];
-                    processHandler.dataStorage.FilesDecimal[row, column] = values[0, 1];
-                    processHandler.dataStorage.FilesBinary[row, column] = values[0, 2];
+                    //processHandler.dataStorage.FilesDecimal[row, column] = values[0, 1];
+                    //processHandler.dataStorage.FilesBinary[row, column] = values[0, 2];
 
                     processHandler.dataStorage.UpdateASCII(values[0, 0], row);
                 }   
@@ -705,7 +703,7 @@ namespace ProcessExplorer
                 {
                     int offset = int.Parse(selectedHeader.GetData(row, 0, DataType.DECIMAL, false, true, processHandler.dataStorage)); // This gets the file offset in decimal form
                     int everythingRow = (int)Math.Floor(offset / 16.0);
-                    int everythingRowOffset = int.Parse(processHandler.dataStorage.FilesDecimal[everythingRow, 0]);
+                    int everythingRowOffset = int.Parse(processHandler.dataStorage.GetFilesDecimal(everythingRow, 0));
                     int difference = offset - everythingRowOffset; // Difference between the headers data's offset and the main rows offset  
                     int offsetPlusFieldSize = difference + (fieldsSize == -1 ? orignalLength : fieldsSize); // Compensate for headers that dont use 'Size'
 

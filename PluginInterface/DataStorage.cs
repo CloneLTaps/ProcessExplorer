@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 
 namespace PluginInterface
 {
@@ -10,17 +11,59 @@ namespace PluginInterface
 
         public string FileName { get; private set; }
         public string[,] FilesHex { get; private set; }
-        public string[,] FilesDecimal { get; private set; }
-        public string[,] FilesBinary { get; private set; }
 
-        public DataStorage(Settings settings, string[,] filesHex, string[,] filesDecimal, string[,] filesBinary, bool is64Bit, string fileName)
+        public DataStorage(Settings settings, string[,] filesHex, bool is64Bit, string fileName)
         {
             this.Settings = settings;
             this.FilesHex = filesHex;
-            this.FilesDecimal = filesDecimal;
-            this.FilesBinary = filesBinary;
             this.Is64Bit = is64Bit;
             this.FileName = fileName;
+        }
+
+        public string GetFilesDecimal(int row, int column)
+        {
+            if (column == 2) return FilesHex[row, 2];
+
+            if(column == 1)
+            {   // Data column
+                string[] hexBytes = FilesHex[row, 1].Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                string[] decimalBytes = GetDecimalBytes(hexBytes);
+                return string.Join(" ", decimalBytes);
+            }
+
+            if (column == 0)
+            {   // Offset column
+                return Convert.ToInt32(FilesHex[row, 0].Substring(2), 16).ToString();
+            }
+            return "";
+        }
+
+        public string GetFilesBinary(int row, int column)
+        {
+            if (column == 2) return FilesHex[row, 2];
+
+            if (column == 1)
+            {   // Data column
+                string[] hexBytes = FilesHex[row, 1].Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                string[] binaryBytes = GetDecimalBytes(hexBytes).Select(decimalByte => Convert.ToString(int.Parse(decimalByte), 2).PadLeft(8, '0')).ToArray();
+                return string.Join(" ", binaryBytes);
+            }
+
+            if(column == 0)
+            {   // Offset column
+                int decimalValue = Convert.ToInt32(FilesHex[row, 0].Substring(2), 16);
+                return Convert.ToString(decimalValue, 2).ToString();
+            }
+            return "";
+        }
+
+        private string[] GetDecimalBytes(string[] hexBytes)
+        {
+            return hexBytes.Select(hexByte =>
+            {
+                if (int.TryParse(hexByte, System.Globalization.NumberStyles.HexNumber, null, out int decimalValue)) return decimalValue.ToString();
+                else return "0";
+            }).ToArray();
         }
 
         public int GetFilesRows()
@@ -33,11 +76,9 @@ namespace PluginInterface
             return FilesHex.GetLength(1);
         }
 
-        public void UpdateArrays(string[,] filesHex, string[,] filesDecimal, string[,] filesBinary)
+        public void UpdateArrays(string[,] filesHex)
         {
             this.FilesHex = filesHex;
-            this.FilesDecimal = filesDecimal;
-            this.FilesBinary = filesBinary;
         }
 
         public string UpdateASCII(string hexString, int row)
