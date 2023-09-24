@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using static PluginInterface.Enums;
 
 namespace PluginInterface
 {
@@ -16,5 +17,25 @@ namespace PluginInterface
 
         public void Cleanup();
 
+        /// <summary> This can be used to determine which header needs their checksum updated depending on the row that was updated </summary>
+        public static List<SuperHeader> GetHeaderFromRow(int row, Dictionary<string, SuperHeader> compMap, DataStorage data)
+        {
+            List<SuperHeader> list = new List<SuperHeader>();
+
+            foreach (var map in compMap)
+            {
+                SuperHeader header = map.Value;
+                if (header.Component == "everything") continue;
+
+                int startingRow = (int)Math.Floor(header.StartPoint / 16.0);
+                int endingRow = (int)Math.Floor(header.EndPoint / 16.0);
+
+                int rowOffset = int.Parse(header.GetData(row, 0, DataType.DECIMAL, false, true, data));
+                int compensatedRow = (int)Math.Floor(rowOffset / 16.0); // This is our row relative to the start of the file
+
+                if (compensatedRow >= startingRow && compensatedRow <= endingRow) list.Add(header);
+            }
+            return list;
+        }
     }
 }

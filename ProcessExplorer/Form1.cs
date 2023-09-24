@@ -2,10 +2,12 @@
 using System.Text;
 using System.Drawing;
 using System.Windows.Forms;
+using System.Linq;
 using System.IO;
 using ProcessExplorer.components.impl;
 using System.Collections.Generic;
 using PluginInterface;
+using static PluginInterface.Enums;
 
 namespace ProcessExplorer
 {
@@ -229,6 +231,8 @@ namespace ProcessExplorer
             {   // This will clear all the current data Tree Nodes and clear the map of components so we can recalcualte them
                 treeView.Nodes.Clear();
                 processHandler.componentMap.Clear();
+                Console.WriteLine("IsHexArrayNull:" + (processHandler.dataStorage.FilesHex == null) + " Length:" + (processHandler.dataStorage.FilesHex != null ? 
+                    processHandler.dataStorage.GetFilesRows() : 0));
                 processHandler.CalculateHeaders(processHandler.dataStorage.FilesHex);
             }
 
@@ -592,6 +596,31 @@ namespace ProcessExplorer
             return hexString.ToString().Trim();
         }
 
+        private string[] ConvertArrayToHex(string[] inputArray)
+        {
+            if (hexButton.Checked) return inputArray;
+
+            string[] hexArray = new string[inputArray.Length];
+
+            for (int i = 0; i < inputArray.Length; i++)
+            {
+                string element = inputArray[i].Trim();
+
+                if (binaryButton.Checked)
+                {   // Input is in binary format, convert to hex
+                    string binaryValue = element;
+                    int decimalValue = Convert.ToInt32(binaryValue, 2);
+                    hexArray[i] = decimalValue.ToString("X2");
+                }
+                else if (decimalButton.Checked)
+                {   // Input is in decimal format, convert to hex
+                    if (int.TryParse(element, out int decimalValue)) hexArray[i] = decimalValue.ToString("X2");
+                    else hexArray[i] = "00"; // Placeholder value for invalid input
+                }
+            }
+            Console.WriteLine("ConvertArrayToHex:" + string.Join(" ", hexArray));
+            return hexArray;
+        }
 
         private void DataGridView_CellValuePushed(object sender, DataGridViewCellValueEventArgs e)
         {
@@ -604,32 +633,142 @@ namespace ProcessExplorer
             SuperHeader selectedHeader = processHandler.GetComponentFromMap(selectedComponent);
             if (selectedHeader == null || row >= selectedHeader.RowSize || doubleByteButton.Checked) return;
 
+            // Corrects for empty newValue's and for newValue's with odd spaces
+            string[] newValueArray = ConvertArrayToHex(newValue == null || newValue == "" ? new string[0] : newValue.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
+            newValue = string.Join(" ", newValueArray); // I need to update this in case this was edited in decimal or binary
+
+            int unModifiedNewValueLength = newValueArray.Length;
+            int oldRowsByteCount = processHandler.dataStorage.FilesHex[row, 1].Split(" ").Length;
+            int oldRowCount = processHandler.dataStorage.GetFilesRows();
+
+            Console.WriteLine("eValue:" + e.Value + " NewValue:" + newValue + " UnModifiedNewValueLength:" + unModifiedNewValueLength);
+
+            foreach (string str in newValueArray)
+            {   // This ensures the program does not crash if someone entered an invalid input (ex: '0' or '000')
+                if (str == "") continue;
+
+                if (str.Length < 2)
+                {
+                    MessageBox.Show("You included input with less than 1 byte!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                if (str.Length > 2)
+                {
+                    MessageBox.Show("You included input that was larger than 1 byte!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+            }
+
             if (selectedComponent == "everything")
             {   // if this is true then that means I need to update the other data source which first requies me to customize the data to the fit the structure
-                string[,] values = processHandler.GetValueVariations(newValue, hexButton.Checked, decimalButton.Checked);
 
-                int offset = int.Parse(selectedHeader.GetData(row, 0, Enums.DataType.DECIMAL, false, false, processHandler.dataStorage)); // This gets the file offset in decimal form
+                Console.WriteLine("Everything " + "NewValueArrayLength:" + newValueArray.Length + " OldRowsByteCount:" + oldRowsByteCount);
+                if (unModifiedNewValueLength == oldRowsByteCount)
+                {   // This is the common case where the length does not change thus we can just replace the bytes without refactoring the rows
+                    string[,] values = processHandler.GetValueVariations(newValue, true, false);
+                    processHandler.dataStorage.FilesHex[row, column] = values[0, 0];
+                    processHandler.dataStorage.FilesDecimal[row, column] = values[0, 1];
+                    processHandler.dataStorage.FilesBinary[row, column] = values[0, 2];
 
-                processHandler.dataStorage.FilesHex[row, column] = values[0, 0];
-                processHandler.dataStorage.FilesDecimal[row, column] = values[0, 1];
-                processHandler.dataStorage.FilesBinary[row, column] = values[0, 2];
-
-                processHandler.dataStorage.UpdateASCII(values[0, 0], row);
-
-                foreach (var map in processHandler.componentMap)
+                    processHandler.dataStorage.UpdateASCII(values[0, 0], row);
+                }   
+                else
                 {
-                    SuperHeader comp = map.Value;
-                    if (comp.Component != "everything" && comp.StartPoint <= offset && comp.EndPoint >= offset)
+                    int remainingHexBytes = processHandler.dataStorage.FilesHex[oldRowCount - 1, 1].Split(" ").Count(); // Amount of bytes on the last row
+
+                    int oldByteCount = (oldRowCount * 16) - (16 - remainingHexBytes);
+                    int rowsByteDifference = unModifiedNewValueLength - oldRowsByteCount;
+                    string[] filesHexData = new string[oldByteCount + rowsByteDifference];
+                    Console.WriteLine("OldByteCount:" + oldRowsByteCount + " OldRowCount:" + oldRowCount + " OldByteCount:" + oldByteCount + " NewByteCount:" + newValueArray.Length
+                        + " Diff:" + rowsByteDifference  + " NewByteCount:" + filesHexData.Length + " NewRowCount:" + Math.Ceiling(filesHexData.Length / 16.0));
+
+                    int index = 0;
+                    for(int i=0; i<oldRowCount; i++)
                     {
-                        TriggerRedraw();
-                        break;
+                        string[] r = i == row ? newValueArray : processHandler.dataStorage.FilesHex[i, 1].Split(" ");
+                        //Console.WriteLine("i:" + i + " Row:" + row + " Copying: " + string.Join(" ", r));
+                        Array.Copy(r, 0, filesHexData, index, r.Length);
+                        index += r.Length;
                     }
+
+                    processHandler.PopulateArrays(filesHexData, (int) Math.Ceiling(filesHexData.Length / 16.0));
                 }
             }
             else
-            {   // else I need to update the data source inside everything
-                selectedHeader.UpdateData(row, newValue, hexButton.Checked, decimalButton.Checked, processHandler.dataStorage);
-                TriggerRedraw();
+            {   // Else I need to update the data source inside everything since the edit took place in a header
+                int orignalLength = (selectedHeader.GetData(row, 1, DataType.HEX, false, false, processHandler.dataStorage).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)).Length;
+                int fieldsSize = selectedHeader.Size != null ? selectedHeader.Size[row] : -1; // Fields can only be larger than 16 bytes if they implement a size
+                Console.WriteLine("Other NewValueArrayLength:" + newValueArray.Length + " FieldSize:" + fieldsSize + " OriginalLength:" + orignalLength + " Row:" + row);
+                if (unModifiedNewValueLength == orignalLength) selectedHeader.UpdateData(row, newValue, true, false, processHandler.dataStorage);
+                else // Else I need to update the rows since we are either under or overflowing
+                {
+                    int offset = int.Parse(selectedHeader.GetData(row, 0, DataType.DECIMAL, false, true, processHandler.dataStorage)); // This gets the file offset in decimal form
+                    int everythingRow = (int)Math.Floor(offset / 16.0);
+                    int everythingRowOffset = int.Parse(processHandler.dataStorage.FilesDecimal[everythingRow, 0]);
+                    int difference = offset - everythingRowOffset; // Difference between the headers data's offset and the main rows offset  
+                    int offsetPlusFieldSize = difference + (fieldsSize == -1 ? orignalLength : fieldsSize); // Compensate for headers that dont use 'Size'
+
+                    string[] everythingDataRow = processHandler.dataStorage.FilesHex[everythingRow, 1].Split(" ");
+                    // Takes the start bytes of the row till we reach our fields offset, then take that fields new added bytes before adding the rest of the line after skipping the original bytes
+
+                    Console.WriteLine("Offset:" + offset + " EverythingRow:" + everythingRow +
+                        " EverythingRowOffset:" + everythingRowOffset + " Difference:" + difference + " OffsetPlusFieldSize:" + offsetPlusFieldSize);
+                    Console.WriteLine("EverythingDataRow:" + string.Join(" ", everythingDataRow));
+                    // The above code only fails if the field goes onto the next line
+
+                    List<int> skipList = new List<int>();
+                    int remainingHexBytes = processHandler.dataStorage.FilesHex[oldRowCount - 1, 1].Split(" ").Count(); // Amount of bytes on the last row
+                    int oldByteCount = (oldRowCount * 16) - (16 - remainingHexBytes);
+
+                    Console.WriteLine("\n" + "EverythingTake:" + string.Join(" ", everythingDataRow.Take(difference).ToArray()) + " \n" + 
+                        "AddNewValueArray:" + string.Join(" ", newValueArray)
+                        + " \n" + "Skip:" + offsetPlusFieldSize + " EverythingLastTake:" + string.Join(" ", everythingDataRow.Skip(offsetPlusFieldSize)
+                        .Take(Math.Max(0, (16 - offsetPlusFieldSize))).ToArray()) + " Take:" + (Math.Max(0, (16 - offsetPlusFieldSize))) + "\n");
+
+                    newValueArray = everythingDataRow.Take(difference).ToArray() // First take the starting bytes in the row till you reach your target field
+                        .Concat(newValueArray).ToArray() // Next concat all of the newly modified bytes (the row of user modified bytes)
+                        .Concat(everythingDataRow.Skip(offsetPlusFieldSize)
+                        .Take(Math.Max(0, (16 - offsetPlusFieldSize)))).ToArray(); // Lastly, add the rest of the starting row if it contains other fields bytes
+
+                    Console.WriteLine("NewValueArrayLength:" + newValueArray.Length + " UnModifiedNewValueLength:" + unModifiedNewValueLength + " NewValueArray:" + string.Join(" ", newValueArray) );
+
+                    if(offsetPlusFieldSize > 16 && selectedHeader.Size != null) // This means I need to remove bytes on the next line or lines
+                    {   // Also if 'selectedHeader.Size == null' then we know all of the data will exists on one row so we dont need to run this code
+                        int count = 0;
+                        for(int i = everythingRow + 1; i < everythingRow + Math.Ceiling(offsetPlusFieldSize / 16.0); i++)
+                        {
+                            skipList.Add(i); // Ensures the loop bellow does not add rows that we manaully added
+
+                            string[] newRow = processHandler.dataStorage.FilesHex[i, 1].Split(" ");
+                            int skip = offsetPlusFieldSize - (16 * ++count);
+                            newValueArray = newValueArray.Concat(newRow.Skip(skip) // Skips our targets bytes
+                                .Take(Math.Max(0, 16 - skip))).ToArray(); // Take the remaining bytes 
+                            Console.WriteLine("FieldOverFlowFix i:" + i + " Count:" + count + " Skip:" + skip + " Take:" + Math.Max(0, 16 - skip));
+                        }
+                    }
+
+                    int index = 0;
+                    Console.WriteLine("NewValueArray:" + string.Join(" ", newValueArray));
+
+                    int rowsByteDifference = unModifiedNewValueLength - orignalLength; // Calculate the amount of bytes that were added or subtracted 
+                    string[] filesHexData = new string[oldByteCount + rowsByteDifference];
+
+                    Console.WriteLine("RemainignHexBytes:" + remainingHexBytes + " OldByteCount:" + oldByteCount + " RowsByteDifference:" + rowsByteDifference +
+                         " 1dArrayLength:" + filesHexData.Length + " FieldsSize:" + fieldsSize + " UnmodifedArraySize:" + unModifiedNewValueLength);
+
+                    for (int i = 0; i < oldRowCount; i++)
+                    {
+                        if (skipList.Contains(i)) continue;
+                        string[] r = i == everythingRow ? newValueArray : processHandler.dataStorage.FilesHex[i, 1].Split(" ");
+
+                        Array.Copy(r, 0, filesHexData, index, r.Length);
+                        index += r.Length;
+                    }
+
+                    processHandler.PopulateArrays(filesHexData, (int)Math.Ceiling(filesHexData.Length / 16.0));
+                }
+
             }
 
             // This will recalculate all our headers and for all plugins. This is useful since fields can change like the size and checksums
@@ -642,6 +781,10 @@ namespace ProcessExplorer
                     plugin.ReclaculateHeaders(row, processHandler.dataStorage);
                 }
             }
+
+            TriggerRedraw();
+
+            Console.WriteLine("\n \n");
         }
 
         private void DataGridView_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)

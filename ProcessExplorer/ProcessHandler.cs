@@ -63,7 +63,6 @@ namespace ProcessExplorer
 
         public void CalculateHeaders(string[,] filesHex)
         {
-
             // The following populates the dictionary for PE's
             componentMap.Add("everything", new Everything(dataStorage, filesHex.GetLength(0)));
             if (GetComponentFromMap("everything").EndPoint <= 2) return; // The file is esentially blank  
@@ -228,49 +227,41 @@ namespace ProcessExplorer
             }
         }
 
-        public string ReplaceData(int difference, int dataByteLength, string data, string replacment, int originalLength, string type)
+        public void PopulateArrays(string[] hex, int arrayLength)
         {
-            string[] originalBytes = data.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            string[] replacementBytes = replacment.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            string[,] filesHex = new string[arrayLength, 3];
+            string[,] filesDecimal = new string[arrayLength, 2];
 
-            if (type == "dos stub" || type.ToString().Contains("section body"))
-            {   // This means I just need to replace the data instead of switching out a few bytes
-                if (replacementBytes.Length < originalLength)
-                {   // This means the user is trying to reduce the data sections size for some reason
-                    return string.Join(" ", replacementBytes);
-                }
-
-                for (int i = 0; i < replacementBytes.Length; i++)
-                {
-                    if (originalBytes.Length - 1 >= i) originalBytes[i] = replacementBytes[i];
-                }
-                return string.Join(" ", originalBytes);
-            }
-
-            if (difference >= 0 && dataByteLength > 0 && difference + (dataByteLength * 3) <= data.Length)
+            int taken = 0;
+            for(int i=0; i<arrayLength; i++)
             {
-                int byteLength = originalBytes.Length;
-                if (difference >= 0 && dataByteLength > 0 && difference + dataByteLength <= byteLength)
+                int take = Math.Min(hex.Length - taken, 16);
+                string[] newHexLine = hex.Skip(taken).Take(take).ToArray();
+                int offset = i * 16;
+
+                filesHex[i, 0] = "0x" + offset.ToString("X");
+                filesHex[i, 1] = string.Join(" ", newHexLine);
+
+                filesDecimal[i, 0] = offset.ToString();
+                filesDecimal[i, 1] = string.Join(" ", newHexLine.Select(hexValue => Convert.ToInt32(hexValue, 16).ToString()).ToArray());
+
+                string ascii = "";
+                string hexString = filesHex[i, 1].Replace(" ", "");
+                for (int j = 0; j < hexString.Length; j += 2)
                 {
-                    // Calculate the start and end indexes of the section to replace
-                    int endIndex = difference + dataByteLength;
+                    string hexChar = hexString.Substring(j, 2);
+                    int charValue = Convert.ToInt32(hexChar, 16);
 
-                    // Copy the original data
-                    string[] modifiedBytes = new string[byteLength];
-                    Array.Copy(originalBytes, modifiedBytes, byteLength);
-
-                    // Replace the specified section with the replacement data
-                    for (int i = difference; i < endIndex; i++)
-                    {
-                        if (i >= byteLength || i - difference >= replacementBytes.Length) break;
-                        modifiedBytes[i] = replacementBytes[i - difference];
-                    }
-
-                    // Combine the modified bytes into a single string
-                    return string.Join(" ", modifiedBytes);
+                    // Check if the character is within the printable ASCII range (32-126)
+                    if (charValue >= 32 && charValue <= 126) ascii += (char)charValue;
+                    else ascii += '.';
                 }
+
+                filesHex[i, 2] = ascii;
+                taken += take;
             }
-            return data;
+
+            dataStorage.UpdateArrays(filesHex, filesDecimal, null);
         }
 
         /* Here index 0 is hex, index 1 is decimal, and index 2 is binary */

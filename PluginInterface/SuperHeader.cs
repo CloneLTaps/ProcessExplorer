@@ -246,9 +246,9 @@ namespace PluginInterface
 
             int offset = int.Parse(GetData(row, 0, DataType.DECIMAL, false, true, dataStorage)); // This gets the file offset in decimal form
             int everythingRow = (int)Math.Floor(offset / 16.0);
-            int everythingOffset = int.Parse(dataStorage.FilesDecimal[everythingRow, 0]);
-            int dataByteLength = (GetData(row, 1, DataType.HEX, false, false, dataStorage).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)).Length;
-            int difference = offset - everythingOffset;
+            int everythingRowOffset = int.Parse(dataStorage.FilesDecimal[everythingRow, 0]);
+            int dataByteLength = values.GetLength(0);
+            int difference = offset - everythingRowOffset; // Difference between the headers data's offset and the main rows offset  
 
             dataStorage.FilesHex[everythingRow, 1] = dataStorage.ReplaceData(difference, dataByteLength, dataStorage.FilesHex[everythingRow, 1], values[0, 0], orignalLength, Component);
             dataStorage.FilesDecimal[everythingRow, 1] = dataStorage.ReplaceData(difference, dataByteLength, dataStorage.FilesDecimal[everythingRow, 1], values[0, 1], orignalLength, Component);
@@ -269,8 +269,8 @@ namespace PluginInterface
                     .GroupBy(x => x.Index / 2).Select(group => new string(group.Select(x => x.Char).ToArray())).ToArray();
 
                 values[0, 0] = string.Join(" ", bytes); // Hex
-                values[0, 1] = string.Join(" ", Array.ConvertAll(bytes, hex => long.Parse(hex, System.Globalization.NumberStyles.HexNumber))); // Decimal
-                values[0, 2] = string.Join(" ", bytes.Select(hexByte => Convert.ToString(long.Parse(hexByte, System.Globalization.NumberStyles.HexNumber), 2).PadLeft(8, '0'))); // Binary
+                values[0, 1] = string.Join(" ", Array.ConvertAll(bytes, hex => long.Parse(hex, NumberStyles.HexNumber))); // Decimal
+                values[0, 2] = string.Join(" ", bytes.Select(hexByte => Convert.ToString(long.Parse(hexByte, NumberStyles.HexNumber), 2).PadLeft(8, '0'))); // Binary
             }
             else if (decimalChecked)
             {

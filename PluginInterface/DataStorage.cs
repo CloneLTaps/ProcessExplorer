@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PluginInterface
 {
@@ -37,7 +33,14 @@ namespace PluginInterface
             return FilesHex.GetLength(1);
         }
 
-        public void UpdateASCII(string hexString, int row)
+        public void UpdateArrays(string[,] filesHex, string[,] filesDecimal, string[,] filesBinary)
+        {
+            this.FilesHex = filesHex;
+            this.FilesDecimal = filesDecimal;
+            this.FilesBinary = filesBinary;
+        }
+
+        public string UpdateASCII(string hexString, int row)
         {
             string[] hexBytes = hexString.Split(' '); // Split by spaces
 
@@ -52,6 +55,7 @@ namespace PluginInterface
                 else asciiString += ".";
             }
             FilesHex[row, 2] = asciiString;
+            return asciiString;
         }
 
         public string ReplaceData(int difference, int dataByteLength, string data, string replacment, int originalLength, string type)
@@ -59,7 +63,7 @@ namespace PluginInterface
             string[] originalBytes = data.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             string[] replacementBytes = replacment.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
-            if (type == "dos stub" || type.ToString().Contains("section body"))
+            if (type == "dos stub" || type.ToString().Contains(" body"))
             {   // This means I just need to replace the data instead of switching out a few bytes
                 if (replacementBytes.Length < originalLength)
                 {   // This means the user is trying to reduce the data sections size for some reason
@@ -73,7 +77,7 @@ namespace PluginInterface
                 return string.Join(" ", originalBytes);
             }
 
-            if (difference >= 0 && dataByteLength > 0 && difference + (dataByteLength * 3) <= data.Length)
+            if (difference >= 0 && dataByteLength > 0)
             {
                 int byteLength = originalBytes.Length;
                 if (difference >= 0 && dataByteLength > 0 && difference + dataByteLength <= byteLength)
