@@ -3,6 +3,7 @@ using System.IO;
 using System.Reflection;
 using System.Windows.Forms;
 using System.Collections.Generic;
+using PluginInterface;
 
 namespace ProcessExplorer
 {
@@ -15,7 +16,17 @@ namespace ProcessExplorer
         [STAThread]
         static void Main()
         {
-            List<PluginInterface.IPlugin> loadedPlugins = new List<PluginInterface.IPlugin>();
+            Application.SetHighDpiMode(HighDpiMode.SystemAware);
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            Application.Run(new Form1(LoadPlugins()));
+
+            Console.WriteLine("Starting HexEditor");
+        }
+
+        public static Dictionary<string, IPlugin> LoadPlugins()
+        {
+            Dictionary<string, IPlugin> loadedPlugins = new Dictionary<string, IPlugin>();
 
             var pluginFolder = "Plugins";
             var pluginFiles = Directory.GetFiles(pluginFolder, "*.dll");
@@ -25,21 +36,14 @@ namespace ProcessExplorer
                 var assembly = Assembly.LoadFrom(pluginFile);
                 foreach (var type in assembly.GetTypes())
                 {
-                    if (typeof(PluginInterface.IPlugin).IsAssignableFrom(type) && !type.IsInterface)
+                    if (typeof(IPlugin).IsAssignableFrom(type) && !type.IsInterface)
                     {
-                        var plugin = (PluginInterface.IPlugin)Activator.CreateInstance(type);
-                        loadedPlugins.Add(plugin);
-                        Console.WriteLine("Plugin: " + type.Name);
+                        var plugin = (IPlugin)Activator.CreateInstance(type);
+                        loadedPlugins.Add(plugin.GetPluginsName(), plugin);
                     }
                 }
             }
-
-            Application.SetHighDpiMode(HighDpiMode.SystemAware);
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Form1(loadedPlugins));
-
-            Console.WriteLine("Starting HexEditor");
+            return loadedPlugins;
         }
 
     }

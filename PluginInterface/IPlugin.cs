@@ -15,6 +15,8 @@ namespace PluginInterface
 
         public MyTreeNode RecieveTreeNodes();
 
+        public string GetPluginsName();
+
         public void Cleanup();
 
         /// <summary> This can be used to determine which header needs their checksum updated depending on the row that was updated </summary>

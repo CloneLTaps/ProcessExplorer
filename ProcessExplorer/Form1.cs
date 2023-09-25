@@ -13,16 +13,19 @@ namespace ProcessExplorer
 {
     public partial class Form1 : Form
     {
-        private readonly List<IPlugin> loadedPlugins = new List<IPlugin>();
+        private Dictionary<string, IPlugin> loadedPlugins { get; set; }
+        private readonly Dictionary<string, IPlugin> disabledPlugins = new Dictionary<string, IPlugin>();
         private readonly List<IPlugin> initializedPlugins = new List<IPlugin>();
 
         private readonly ContextMenuStrip fileContextMenu = new ContextMenuStrip();
         private readonly ContextMenuStrip settingsMenu = new ContextMenuStrip();
+        private readonly ContextMenuStrip pluginsMenu = new ContextMenuStrip();
+
         private string selectedComponent = "null";
         private CharacterSet selectedCharacter = CharacterSet.ASCII;
         private ProcessHandler processHandler;
 
-        public Form1(List<IPlugin> loadedPlugins)
+        public Form1(Dictionary<string, IPlugin> loadedPlugins)
         {
             this.loadedPlugins = loadedPlugins;
             InitializeComponent();
@@ -32,6 +35,7 @@ namespace ProcessExplorer
             fileContextMenu.Items.Add("Save");
             fileContextMenu.ItemClicked += new ToolStripItemClickedEventHandler(FileLabel_Click_ContextMenu);
 
+            // Handles settings menu
             ToolStripMenuItem setting1 = new ToolStripMenuItem("Remove extra zeros");
             setting1.Click += Settings_Click;
             settingsMenu.Items.Add(setting1);
@@ -52,10 +56,47 @@ namespace ProcessExplorer
             setting5.Click += Settings_Click;
             settingsMenu.Items.Add(setting5);
 
+            // Handes plugins menu
+            ToolStripMenuItem reloadPluginsMainMenu = new ToolStripMenuItem("Reload Plugins");
+            reloadPluginsMainMenu.Name = "Click to reload plugins";
+            reloadPluginsMainMenu.Click += Plugins_Click;
+            pluginsMenu.Items.Add(reloadPluginsMainMenu);
+
+            RefactorLoadedPluginMenus();
+
             dataGridView.ColumnHeadersDefaultCellStyle.BackColor = SystemColors.ControlDark;
             dataGridView.AlternatingRowsDefaultCellStyle.BackColor = SystemColors.ControlDark;
             dataGridView.RowHeadersDefaultCellStyle.BackColor = SystemColors.ControlDark;
             dataGridView.CellFormatting += DataGridView_CellFormatting;
+        }
+
+        private void RefactorLoadedPluginMenus()
+        {
+            ToolStripMenuItem loadedPluginsMainMenu = new ToolStripMenuItem("Loaded Plugins");
+            ContextMenuStrip loadedPluginsSubMenu = new ContextMenuStrip();
+            foreach (var pl in loadedPlugins)
+            {
+                string plName = pl.Key;
+                ToolStripMenuItem loadedPlugin = new ToolStripMenuItem(plName);
+
+                ContextMenuStrip submenu = new ContextMenuStrip();
+                ToolStripMenuItem disablePlugin = new ToolStripMenuItem("Plugin Disabled");
+                disablePlugin.Name = plName;
+                ToolStripMenuItem enablePlugin = new ToolStripMenuItem("Plugin Enabled");
+                enablePlugin.Name = plName;
+
+                submenu.Items.Add(disablePlugin);
+                submenu.Items.Add(enablePlugin);
+
+                disablePlugin.Click += Plugins_Click;
+                enablePlugin.Click += Plugins_Click;
+
+                loadedPlugin.DropDown = submenu;
+                loadedPluginsSubMenu.Items.Add(loadedPlugin);
+            }
+
+            loadedPluginsMainMenu.DropDown = loadedPluginsSubMenu;
+            pluginsMenu.Items.Add(loadedPluginsMainMenu);
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -162,7 +203,7 @@ namespace ProcessExplorer
                         {
                             foreach (var plugin in loadedPlugins)
                             {   // Cleanup our plugins so that the data can be reclaculated for the next file
-                                plugin.Cleanup();
+                                plugin.Value.Cleanup();
                             }
 
                             treeView.Nodes.Clear();
@@ -222,11 +263,35 @@ namespace ProcessExplorer
             }
         }
 
+        /// <summary>
+        ///     This is called when a new file is loaded in order to update the enabled / disabled state of the plugins 
+        /// </summary>
+        private void ConfigurePluginsMenu()
+        {
+            ToolStripMenuItem loadedPluginsMainMenu = pluginsMenu.Items.OfType<ToolStripMenuItem>().FirstOrDefault(item => item.Text == "Loaded Plugins");
+            if (loadedPluginsMainMenu == null) return;
+
+            if (!(loadedPluginsMainMenu.DropDown is ContextMenuStrip loadedPluginsSubMenu)) return;
+
+            foreach (var map in loadedPlugins)
+            {   // This will loop through all of the loaded plugins in order to correct their enable / disable state
+                string plName = map.Key;
+                ToolStripMenuItem loadedPlugin = loadedPluginsSubMenu.Items.OfType<ToolStripMenuItem>().FirstOrDefault(item => item.Text == plName);
+                if (loadedPlugin == null) continue;
+
+                if (!(loadedPlugin.DropDown is ContextMenuStrip submenu)) continue;
+
+                foreach (ToolStripMenuItem item in submenu.Items)
+                {
+                    if (item.Text == "Plugin Enabled") item.Checked = !disabledPlugins.ContainsKey(plName) && initializedPlugins.Contains(map.Value);
+                    else if (item.Text == "Plugin Disabled") item.Checked = disabledPlugins.ContainsKey(plName) || !initializedPlugins.Contains(map.Value);
+                }
+            }
+        }
 
         private void Setup(bool reclculateHeaders)
         {
             // This will check to see if this loaded plugin is compatible with the current file format
-
             if (reclculateHeaders)
             {   // This will clear all the current data Tree Nodes and clear the map of components so we can recalcualte them
                 treeView.Nodes.Clear();
@@ -239,8 +304,14 @@ namespace ProcessExplorer
             initializedPlugins.Clear();
             foreach (var plugin in loadedPlugins)
             {   // This needs to be called when recalulating and when first starting up
-                if (plugin.Initialized(processHandler.dataStorage)) initializedPlugins.Add(plugin);
+                if (plugin.Value.Initialized(processHandler.dataStorage) && !disabledPlugins.ContainsKey(plugin.Key)) initializedPlugins.Add(plugin.Value);
             }
+
+            ToolStripMenuItem loadedPluginsMainMenu = pluginsMenu.Items.OfType<ToolStripMenuItem>().FirstOrDefault(item => item.Text == "Loaded Plugins");
+            if (loadedPluginsMainMenu != null) pluginsMenu.Items.Remove(loadedPluginsMainMenu);
+            RefactorLoadedPluginMenus(); // This will update the 'Loaded Plugins' menu 
+
+            ConfigurePluginsMenu(); // Handles updating the enabled / disabled checked attributes for the plugin menus
 
             TreeNode rootNode = new TreeNode(processHandler.dataStorage.FileName);
 
@@ -616,7 +687,6 @@ namespace ProcessExplorer
                     else hexArray[i] = "00"; // Placeholder value for invalid input
                 }
             }
-            Console.WriteLine("ConvertArrayToHex:" + string.Join(" ", hexArray));
             return hexArray;
         }
 
@@ -794,8 +864,6 @@ namespace ProcessExplorer
         private void DataGridView_CellValueNeeded(object sender, DataGridViewCellValueEventArgs e)
         {
             Enums.DataType type = hexButton.Checked ? Enums.DataType.HEX : decimalButton.Checked ? Enums.DataType.DECIMAL : Enums.DataType.BINARY;
-           /* Console.WriteLine("Comp:" + selectedComponent.ToString() + " Row:" + e.RowIndex + " Column:" + e.ColumnIndex + " Data:"
-                + processHandler.GetValue(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked, selectedComponent, type));*/
             e.Value = processHandler.GetValue(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked, selectedComponent, type);
         }
 
@@ -837,6 +905,103 @@ namespace ProcessExplorer
         private void SettingsLabel_MouseHover(object sender, EventArgs e)
         {
             settingsLabel.BackColor = SystemColors.GradientInactiveCaption;
+        }
+
+        private void PluginsLabel_Click(object sender, EventArgs e)
+        {
+            pluginsMenu.Show(pluginsLabel, new Point(pluginsLabel.Location.X - pluginsLabel.Size.Width + fileLabel.Size.Width, pluginsLabel.Location.Y + pluginsLabel.Size.Height));
+        }
+
+        /// <summary>
+        ///     This handles users clicking 'Reload Plugins' and clicking each of the plugins them selfs.
+        /// </summary>
+        private void Plugins_Click(object sender, EventArgs e)
+        {
+            ToolStripMenuItem clickedItem = (ToolStripMenuItem)sender;
+            string text = clickedItem.Text;
+            string name = clickedItem.Name;
+
+            if (text == "Reload Plugins" && clickedItem.Name == "Click to reload plugins")
+            { 
+                loadedPlugins = Program.LoadPlugins();
+                if(processHandler != null) Setup(true);
+                return;
+            }
+
+            if (processHandler == null) return;
+
+            if (text == "Plugin Disabled")
+            {
+                if (disabledPlugins.ContainsKey(name))
+                {
+                    clickedItem.Checked = true;
+                    return;
+                }
+
+                for (int i = initializedPlugins.Count - 1; i >= 0; i--)
+                {   // Looping this way avoids modifying the list while we are looping through it
+                    IPlugin pl = initializedPlugins[i];
+
+                    if (pl.GetPluginsName() == name)
+                    {
+                        ReversePluginMenuCheck(name, false);
+                        disabledPlugins.Add(name, pl);
+                        clickedItem.Checked = true;
+                        Setup(true);
+                    }
+                }
+            }
+            else if(text == "Plugin Enabled")
+            {
+                if (!loadedPlugins.ContainsKey(name))
+                {
+                    MessageBox.Show(name + " could not be found!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                IPlugin plugin = loadedPlugins.GetValueOrDefault(name);
+                if (plugin == null) return;
+
+                if (plugin.Initialized(processHandler.dataStorage))
+                {
+                    ReversePluginMenuCheck(name, true);
+                    disabledPlugins.Remove(name);
+                    clickedItem.Checked = true;
+                    Setup(true);
+                    return;
+                }
+                MessageBox.Show(name + " could not be enabled!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void ReversePluginMenuCheck(string targetPlugin, bool reverseEnable)
+        {
+            ToolStripMenuItem loadedPluginsMainMenu = pluginsMenu.Items.OfType<ToolStripMenuItem>().FirstOrDefault(item => item.Text == "Loaded Plugins");
+            if (loadedPluginsMainMenu == null) return;
+
+            if (!(loadedPluginsMainMenu.DropDown is ContextMenuStrip loadedPluginsSubMenu)) return;
+
+            ToolStripMenuItem loadedPlugin = loadedPluginsSubMenu.Items.OfType<ToolStripMenuItem>().FirstOrDefault(item => item.Text == targetPlugin);
+            if (loadedPlugin == null) return;
+
+            if (!(loadedPlugin.DropDown is ContextMenuStrip submenu)) return;
+
+            foreach (ToolStripMenuItem item in submenu.Items)
+            {
+                if (item.Text == "Plugin Enabled" && reverseEnable) item.Checked = !item.Checked;
+                else if (item.Text == "Plugin Disabled" && !reverseEnable) item.Checked = !item.Checked;
+            }
+        }
+
+        private void PluginsLabel_MouseLeave(object sender, EventArgs e)
+        {   // Change label appearance when mouse leaves
+            pluginsLabel.BackColor = SystemColors.Control;
+            pluginsLabel.ForeColor = SystemColors.ControlText;
+        }
+
+        private void PluginsLabel_MouseHover(object sender, EventArgs e)
+        {
+            pluginsLabel.BackColor = SystemColors.GradientInactiveCaption;
         }
 
         private class MyToolStripRenderer : ToolStripProfessionalRenderer

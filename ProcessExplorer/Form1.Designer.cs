@@ -56,6 +56,7 @@ namespace ProcessExplorer
             this.replaceWithTextBox = new System.Windows.Forms.ToolStripTextBox();
             this.settingsLabel = new System.Windows.Forms.Label();
             this.blankTopLabel = new System.Windows.Forms.Label();
+            this.pluginsLabel = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -152,7 +153,6 @@ namespace ProcessExplorer
             this.dataGridView.TabIndex = 0;
             this.dataGridView.VirtualMode = true;
             this.dataGridView.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.DataGridView_CellContentClick);
-            this.dataGridView.CellValuePushed += DataGridView_CellValuePushed;
             // 
             // Offset
             // 
@@ -209,7 +209,6 @@ namespace ProcessExplorer
             this.doubleByteButton,
             this.toolStripSeparator3,
             this.replaceButton,
-            this.replaceAllCheckBox,
             this.characterSet,
             this.searchTextBox,
             this.replaceWithTextBox});
@@ -358,14 +357,6 @@ namespace ProcessExplorer
             this.searchTextBox.Name = "searchTextBox";
             this.searchTextBox.Size = new System.Drawing.Size(150, 25);
             this.searchTextBox.ToolTipText = "Data you want to search for and replace";
-            //
-            // replaceAllCheckBox
-            //
-            this.replaceAllCheckBox.AutoSize = false;
-            this.replaceAllCheckBox.Name = "replaceAllCheckBox";
-            this.replaceAllCheckBox.Text = "Replace All";
-            this.replaceAllCheckBox.Size = new System.Drawing.Size(90, 21);
-            this.replaceAllCheckBox.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             // 
             // replaceWithTextBox
             // 
@@ -402,12 +393,28 @@ namespace ProcessExplorer
             this.blankTopLabel.TabIndex = 5;
             this.blankTopLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
+            // pluginsLabel
+            // 
+            this.pluginsLabel.BackColor = System.Drawing.Color.White;
+            this.pluginsLabel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.pluginsLabel.Location = new System.Drawing.Point(87, 0);
+            this.pluginsLabel.Margin = new System.Windows.Forms.Padding(3);
+            this.pluginsLabel.Name = "pluginsLabel";
+            this.pluginsLabel.Size = new System.Drawing.Size(58, 19);
+            this.pluginsLabel.TabIndex = 6;
+            this.pluginsLabel.Text = "Plugins";
+            this.pluginsLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.pluginsLabel.Click += new System.EventHandler(this.PluginsLabel_Click);
+            this.pluginsLabel.MouseLeave += new System.EventHandler(this.PluginsLabel_MouseLeave);
+            this.pluginsLabel.MouseHover += new System.EventHandler(this.PluginsLabel_MouseHover);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.LightGray;
             this.ClientSize = new System.Drawing.Size(984, 561);
+            this.Controls.Add(this.pluginsLabel);
             this.Controls.Add(this.blankTopLabel);
             this.Controls.Add(this.settingsLabel);
             this.Controls.Add(this.toolStrip);
@@ -457,6 +464,7 @@ namespace ProcessExplorer
         private ToolStripTextBox replaceWithTextBox;
         private ToolStripDropDownButton characterSet;
         private ToolStripMenuItem aSCIIToolStripMenuItem;
+        private Label pluginsLabel;
     }
 }
 
