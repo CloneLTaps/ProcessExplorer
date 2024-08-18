@@ -17,6 +17,11 @@ namespace PluginInterface
 
         public string GetPluginsName();
 
+        /// <summary>
+        ///     This allows us to create buttons in the main application that contains a callback function with the code we want it to run.
+        /// </summary>
+        public Dictionary<string, Action<DataStorage>> GetButtons();
+
         public void Cleanup();
 
         /// <summary> This can be used to determine which header needs their checksum updated depending on the row that was updated </summary>

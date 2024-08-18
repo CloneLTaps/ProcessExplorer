@@ -68,6 +68,7 @@ namespace ProcessExplorer
             dataGridView.AlternatingRowsDefaultCellStyle.BackColor = SystemColors.ControlDark;
             dataGridView.RowHeadersDefaultCellStyle.BackColor = SystemColors.ControlDark;
             dataGridView.CellFormatting += DataGridView_CellFormatting;
+            dataGridView.CellValueNeeded += DataGridView_CellValueNeeded;
         }
 
         private void RefactorLoadedPluginMenus()
@@ -353,8 +354,7 @@ namespace ProcessExplorer
 
             
             if(!reclculateHeaders)
-            {
-                // This will auto check the following settings on startup
+            {   // This will auto check the following settings on startup
                 foreach (ToolStripItem item in settingsMenu.Items)
                 {
                     if (item is ToolStripMenuItem menuItem)
@@ -383,7 +383,6 @@ namespace ProcessExplorer
                 // This will trigger the data to be dislayed
                 selectedComponent = "everything";
                 dataGridView.RowCount = processHandler.dataStorage.GetFilesRows() + 1; 
-                dataGridView.CellValueNeeded += DataGridView_CellValueNeeded;
                 TriggerRedraw();
             }
         }
@@ -550,18 +549,6 @@ namespace ProcessExplorer
 
         }
 
-        /* This will trigger the cells the user is currently looking at to be redrawn since they just changed the format */
-        private void TriggerRedraw()
-        {
-            int firstVisibleRowIndex = dataGridView.FirstDisplayedScrollingRowIndex;
-            int lastVisibleRowIndex = firstVisibleRowIndex + dataGridView.DisplayedRowCount(true);
-
-            for (int rowIndex = firstVisibleRowIndex; rowIndex < lastVisibleRowIndex; rowIndex++)
-            {
-                dataGridView.InvalidateRow(rowIndex);
-            }
-        }
-
         private void TreeView_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
         {
             // Check if the click is within the bounds of the node (excluding expand/collapse area)
@@ -569,19 +556,25 @@ namespace ProcessExplorer
             {
                 TreeNode clickedNode = e.Node;
                 string nodeText = clickedNode.Text;
+                
                 if (nodeText == "Sections" || nodeText == "Chunks") return;
                 if (nodeText.Contains(processHandler.dataStorage.FileName)) nodeText = "everything";
 
                 int previousRowCount = processHandler.GetComponentsRowIndexCount(selectedComponent);
                 string selected = nodeText.ToLower();
                 int newRowCount = processHandler.GetComponentsRowIndexCount(selected);
-  
+
                 if (selected == selectedComponent) return;
                 selectedComponent = selected;
 
-                if(processHandler.dataStorage.Settings.ReterunToTop || newRowCount > previousRowCount) dataGridView.FirstDisplayedScrollingRowIndex = 0;
+                dataGridView.SuspendLayout();
+                dataGridView.Rows.Clear();
+                if (processHandler.dataStorage.Settings.ReterunToTop || newRowCount > previousRowCount) dataGridView.FirstDisplayedScrollingRowIndex = 0;
+                dataGridView.RowCount = newRowCount + 1;
+                dataGridView.Invalidate();
+                dataGridView.Refresh();
+                dataGridView.ResumeLayout();
 
-                TriggerRedraw();
                 Form1_Resize(this, EventArgs.Empty);
             }
         }
@@ -862,7 +855,7 @@ namespace ProcessExplorer
         }
 
         private void DataGridView_CellValueNeeded(object sender, DataGridViewCellValueEventArgs e)
-        {
+        { 
             Enums.DataType type = hexButton.Checked ? Enums.DataType.HEX : decimalButton.Checked ? Enums.DataType.DECIMAL : Enums.DataType.BINARY;
             e.Value = processHandler.GetValue(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked, selectedComponent, type);
         }
@@ -907,6 +900,8 @@ namespace ProcessExplorer
             settingsLabel.BackColor = SystemColors.GradientInactiveCaption;
         }
 
+
+        #region Plugin Handlers
         private void PluginsLabel_Click(object sender, EventArgs e)
         {
             pluginsMenu.Show(pluginsLabel, new Point(pluginsLabel.Location.X - pluginsLabel.Size.Width + fileLabel.Size.Width, pluginsLabel.Location.Y + pluginsLabel.Size.Height));
@@ -1003,6 +998,8 @@ namespace ProcessExplorer
         {
             pluginsLabel.BackColor = SystemColors.GradientInactiveCaption;
         }
+        #endregion // End Plugin region
+
 
         private class MyToolStripRenderer : ToolStripProfessionalRenderer
         {

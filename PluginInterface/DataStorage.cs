@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Text;
 
 namespace PluginInterface
 {
@@ -85,18 +86,18 @@ namespace PluginInterface
         {
             string[] hexBytes = hexString.Split(' '); // Split by spaces
 
-            string asciiString = "";
+            StringBuilder asciiBuilder = new StringBuilder();
             foreach (string hexByte in hexBytes)
             {
                 if (byte.TryParse(hexByte, System.Globalization.NumberStyles.HexNumber, null, out byte asciiByte))
                 {
-                    if (asciiByte >= 32 && asciiByte <= 128) asciiString += (char)asciiByte;
-                    else asciiString += ".";
+                    if (asciiByte >= 32 && asciiByte <= 128) asciiBuilder.Append((char)asciiByte);
+                    else asciiBuilder.Append(".");
                 }
-                else asciiString += ".";
+                else asciiBuilder.Append(".");
             }
-            FilesHex[row, 2] = asciiString;
-            return asciiString;
+            FilesHex[row, 2] = asciiBuilder.ToString();
+            return asciiBuilder.ToString();
         }
 
         public string ReplaceData(int difference, int dataByteLength, string data, string replacment, int originalLength, string type)

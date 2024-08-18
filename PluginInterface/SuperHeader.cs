@@ -4,6 +4,7 @@ using System.Linq;
 using System.Globalization;
 
 using static PluginInterface.Enums;
+using System.Text;
 
 namespace PluginInterface
 {
@@ -57,27 +58,29 @@ namespace PluginInterface
         public byte[] GetAllRowData(bool isBody, int row, DataStorage dataStorage)
         {
             string hex = "";
-            if (!isBody)
-            {   // This is the easy case since all of the data can be quried and stored on a single line
-                hex = GetData(row, 1, DataType.HEX, false, true, dataStorage);
-                hex = hex.Replace(" ", "");
+            StringBuilder hexBuilder = new StringBuilder();
 
+            if (!isBody)
+            {   // This is the easy case since all of the data can be queried and stored on a single line
+                hex = GetData(row, 1, DataType.HEX, false, true, dataStorage).Replace(" ", "");
                 if (hex.Length % 2 != 0) throw new ArgumentException("Hex string must have an even number of characters.");
 
                 Console.WriteLine("Type Hex:" + hex);
                 return Enumerable.Range(0, hex.Length / 2).Select(i => Convert.ToByte(hex.Substring(i * 2, 2), 16)).ToArray();
             }
 
-            // This handles bodies of data like in chunk bodies or section bodies
-            for(int i=0; i<RowSize; i++)
-            {
+            for (int i = 0; i < RowSize; i++)
+            {   // This handles bodies of data like in chunk bodies or section bodies
                 string newHexLine = GetData(i, 1, DataType.HEX, false, true, dataStorage).Replace(" ", "");
-                if (hex.Length % 2 != 0) throw new ArgumentException("Hex string must have an even number of characters.");
-                hex += newHexLine;
+                if (hexBuilder.Length % 2 != 0) throw new ArgumentException("Hex string must have an even number of characters.");
+                hexBuilder.Append(newHexLine);
             }
-            if(EndPoint - StartPoint < 200) Console.WriteLine("Body Hex:" + hex);
+
+            hex = hexBuilder.ToString();
+            if (EndPoint - StartPoint < 200) Console.WriteLine("Body Hex:" + hex);
             return Enumerable.Range(0, hex.Length / 2).Select(i => Convert.ToByte(hex.Substring(i * 2, 2), 16)).ToArray();
         }
+
 
         /// <param name="column"> Column of 0 means offset, column of 1 means data, and column of 2 means description. </param>
         public string GetData(int row, int column, DataType dataType, bool bigEndian, bool inFileOffset, DataStorage dataStroage)

@@ -10,8 +10,9 @@ using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using PluginInterface;
+using System.Text;
 
-namespace ProcessExplorer
+namespace ProcessExplorer 
 {
     class ProcessHandler
     {
@@ -51,12 +52,14 @@ namespace ProcessExplorer
             string[,] filesHex = new string[(int)Math.Ceiling(file.Length / 16.0), 3];
 
             PopulateArrays(filesHex); // Passes a reference to the memory address of the above arrays for them to be populated
+            Console.WriteLine("Test 4.1");
             // Create our main storage object that will be passed around to every plugin
-            dataStorage = new DataStorage(HandleSettingsFileIO(), filesHex, true, fileName); 
-
+            dataStorage = new DataStorage(HandleSettingsFileIO(), filesHex, true, fileName);
+            Console.WriteLine("Test 4.2");
             writerTask = Task.Run(() => FileWriterTaskMethod(), cancellationTokenSource.Token);
-
+            Console.WriteLine("Test 4.3");
             CalculateHeaders(filesHex);
+            Console.WriteLine("Test 4.4");
         }
 
         public void CalculateHeaders(string[,] filesHex)
@@ -68,8 +71,8 @@ namespace ProcessExplorer
             componentMap.Add("dos header", new DosHeader(dataStorage));
             if (GetComponentFromMap("dos header").FailedToInitlize) return; // This means this is not a PE
 
-            componentMap.Add("dos stub", new DosStub(this, dataStorage, GetComponentFromMap("dos header").EndPoint)); // This means our PE does not contain a dos stub which is not normal
-            if (GetComponentFromMap("dos stub").FailedToInitlize) return;
+            componentMap.Add("dos stub", new DosStub(this, dataStorage, GetComponentFromMap("dos header").EndPoint)); 
+            if (GetComponentFromMap("dos stub").FailedToInitlize) return; // This means our PE does not contain a dos stub which is not normal
 
             // Possible To:Do look into finding a PE that uses RichHeaders since those can sometimes appear before the PE Header
             PeHeader peHeader = new PeHeader(this, dataStorage, GetComponentFromMap("dos stub").EndPoint);
@@ -117,68 +120,72 @@ namespace ProcessExplorer
             int initialSkipAmount = startPoint % 16; // The amount we need to skip before we reach our target byte 
             int startingIndex = startPoint <= 0 ? 0 : (int)Math.Floor(startPoint / 16.0);
 
-            string ascii = ""; // Section name
+            StringBuilder asciiBuilder = new StringBuilder(); // Section name
             int headerNameStart = 0;
             int headerNameCount = 0;
             for (int row = startingIndex; row < dataStorage.FilesHex.GetLength(0); row++) // Loop through the rows
             {
                 string[] hexBytes = dataStorage.FilesHex[row, 1].Split(' ');
 
-                for (int j = initialSkipAmount; j < hexBytes.Length; j++) // Loop through each rows bytes
+                for (int j = initialSkipAmount; j < hexBytes.Length; j++) // Loop through each row's bytes
                 {
                     if (byte.TryParse(hexBytes[j], System.Globalization.NumberStyles.HexNumber, null, out byte b))
                     {
                         char asciiChar = b > 32 && b <= 126 ? (char)b : ' '; // Space is normally 32 in decimal
+                        asciiBuilder.Append(asciiChar);
                         int currentOffset = startPoint + ((row - startingIndex) * 16) + (initialSkipAmount > 0 ? 0 : j); // initialSkipAmount is already compensated by startPoint
 
                         if (currentOffset >= stoppingPoint) return; // This means a section body is about to start so we found all the headers
 
-                        ascii += asciiChar;
-
                         if (headerNameStart == 0 && (asciiChar == '.' || asciiChar == '_'))
-                        {   // This means we are possibly at the start of a new section header
-                            headerNameStart = currentOffset;
-                            ++headerNameCount;
-                        }
-                        else if(++headerNameCount < 8) // The Name field in section headers are 8 bytes long
                         {
-                            if(headerNameCount < 4 && asciiChar == ' ')
-                            {   // If the first few characters are not valid ASCII then we know its not a section header
+                            headerNameStart = currentOffset;
+                            headerNameCount++;
+                        }
+                        else if (++headerNameCount < 8) // The Name field in section headers are 8 bytes long
+                        {
+                            if (headerNameCount < 4 && asciiChar == ' ')
+                            {
                                 headerNameStart = headerNameCount = 0;
-                                ascii = "";
+                                asciiBuilder.Clear();
                             }
                         }
                         else
-                        {   // This means we must be at the 8th byte which always should be null terminating if its a valid section header name
-                            if(b == 00)
+                        {
+                            if (b == 00)
                             {
-                                string udpatedAscii = ascii.Replace(" ", "").ToLower(); // Remove the null characters which were swapped to a space
-                                string sectionType = udpatedAscii + " section header";
-                                string sectionBodyType = udpatedAscii + " section body";
-                                SectionHeader header = new SectionHeader(dataStorage, headerNameStart, sectionType);
-                                SectionBody body = new SectionBody(header.bodyStartPoint, header.bodyEndPoint, sectionBodyType);
-
-                                if (componentMap.ContainsKey(sectionType)) componentMap[sectionType] = header;
-                                else componentMap.Add(sectionType, header);
-
-                                if (componentMap.ContainsKey(sectionBodyType)) componentMap[sectionBodyType] = body;
-                                else componentMap.Add(sectionBodyType, body);
-
-                                // This sets the stopping point to the start of the nearest section body relative to the section header table
-                                int stopPoint = Math.Min(body.StartPoint > 0 && body.EndPoint - body.StartPoint > 0 ? body.StartPoint : stoppingPoint, stoppingPoint);
-                                
-                                if(++sectionCount < sectionAmount) // This means we found all of the section headers
-                                    AssignSectionHeaders(header.EndPoint, stopPoint, sectionAmount, sectionCount); 
+                                string updatedAscii = asciiBuilder.ToString().Replace(" ", "").ToLower(); // Remove the null characters which were swapped to a space
+                                ProcessSectionHeader(startPoint, stoppingPoint, sectionAmount, sectionCount, headerNameStart, updatedAscii);
+                                asciiBuilder.Clear();
                                 return;
                             }
                             headerNameStart = headerNameCount = 0;
-                            ascii = "";
+                            asciiBuilder.Clear();
                         }
                     }
                 }
                 initialSkipAmount = 0;
             }
-            return;
+        }
+
+        private void ProcessSectionHeader(int startPoint, int stoppingPoint, int sectionAmount, int sectionCount, int headerNameStart, string ascii)
+        {
+            string sectionType = ascii + " section header";
+            string sectionBodyType = ascii + " section body";
+            SectionHeader header = new SectionHeader(dataStorage, headerNameStart, sectionType);
+            SectionBody body = new SectionBody(header.bodyStartPoint, header.bodyEndPoint, sectionBodyType);
+
+            if (componentMap.ContainsKey(sectionType)) componentMap[sectionType] = header;
+            else componentMap.Add(sectionType, header);
+
+            if (componentMap.ContainsKey(sectionBodyType)) componentMap[sectionBodyType] = body;
+            else componentMap.Add(sectionBodyType, body);
+
+            // This sets the stopping point to the start of the nearest section body relative to the section header table
+            int stopPoint = Math.Min(body.StartPoint > 0 && body.EndPoint - body.StartPoint > 0 ? body.StartPoint : stoppingPoint, stoppingPoint);
+
+            if (++sectionCount < sectionAmount) // This means we found all of the section headers
+                AssignSectionHeaders(header.EndPoint, stopPoint, sectionAmount, sectionCount);
         }
 
         private void PopulateArrays(string[,] filesHex)
@@ -193,22 +200,20 @@ namespace ProcessExplorer
                 {
                     string hex = BitConverter.ToString(buffer, 0, bytesRead).Replace("-", " ");
                     string[] hexBytes = hex.Split(' ');
-                    string decimalNumbers = string.Join(" ", hexBytes.Select(hexByte => Convert.ToInt32(hexByte, 16).ToString()));
-                    string binary = string.Join(" ", buffer.Take(bytesRead).Select(b => Convert.ToString(b, 2).PadLeft(8, '0')));
 
                     // Now we need to generate the ASCII characters that will be added to our hex array 
-                    string ascii = "";
+                    StringBuilder asciiBuilder = new StringBuilder();
                     foreach (byte b in buffer)
                     {
                         char asciiChar = b >= 32 && b <= 126 ? (char)b : '.';
-                        ascii += asciiChar;
+                        asciiBuilder.Append(asciiChar);
                     }
 
                     // filesHex only gets the ascii since it will be the same for the other two arrays
                     // so theres no point wasting memory on adding it.
                     filesHex[down, 0] = "0x" + (down * 16).ToString("X");
                     filesHex[down, 1] = hex;
-                    filesHex[down, 2] = ascii;
+                    filesHex[down, 2] = asciiBuilder.ToString();
 
                     down++;
                 }
@@ -219,13 +224,13 @@ namespace ProcessExplorer
             }
         }
 
+
         public void PopulateArrays(string[] hex, int arrayLength)
         {
             string[,] filesHex = new string[arrayLength, 3];
-            string[,] filesDecimal = new string[arrayLength, 2];
 
             int taken = 0;
-            for(int i=0; i<arrayLength; i++)
+            for (int i = 0; i < arrayLength; i++)
             {
                 int take = Math.Min(hex.Length - taken, 16);
                 string[] newHexLine = hex.Skip(taken).Take(take).ToArray();
@@ -234,22 +239,16 @@ namespace ProcessExplorer
                 filesHex[i, 0] = "0x" + offset.ToString("X");
                 filesHex[i, 1] = string.Join(" ", newHexLine);
 
-                filesDecimal[i, 0] = offset.ToString();
-                filesDecimal[i, 1] = string.Join(" ", newHexLine.Select(hexValue => Convert.ToInt32(hexValue, 16).ToString()).ToArray());
-
-                string ascii = "";
+                StringBuilder asciiBuilder = new StringBuilder();
                 string hexString = filesHex[i, 1].Replace(" ", "");
                 for (int j = 0; j < hexString.Length; j += 2)
                 {
                     string hexChar = hexString.Substring(j, 2);
                     int charValue = Convert.ToInt32(hexChar, 16);
-
-                    // Check if the character is within the printable ASCII range (32-126)
-                    if (charValue >= 32 && charValue <= 126) ascii += (char)charValue;
-                    else ascii += '.';
+                    asciiBuilder.Append(charValue >= 32 && charValue <= 126 ? (char)charValue : '.');
                 }
 
-                filesHex[i, 2] = ascii;
+                filesHex[i, 2] = asciiBuilder.ToString();
                 taken += take;
             }
 

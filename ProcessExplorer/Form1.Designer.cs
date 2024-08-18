@@ -17,6 +17,18 @@ namespace ProcessExplorer
             base.Dispose(disposing);
         }
 
+        /* This will trigger the cells the user is currently looking at to be redrawn since they just changed the format */
+        private void TriggerRedraw()
+        {
+            int firstVisibleRowIndex = dataGridView.FirstDisplayedScrollingRowIndex;
+            int lastVisibleRowIndex = firstVisibleRowIndex + dataGridView.DisplayedRowCount(true);
+
+            for (int rowIndex = firstVisibleRowIndex; rowIndex < lastVisibleRowIndex; rowIndex++)
+            {
+                dataGridView.InvalidateRow(rowIndex);
+            }
+        }
+
         #region Windows Form Designer generated code
 
         /// <summary>
@@ -115,6 +127,7 @@ namespace ProcessExplorer
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.dataGridView.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
+            this.dataGridView.BackgroundColor = System.Drawing.SystemColors.ControlDarkDark;
             dataGridViewCellStyle2.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
             dataGridViewCellStyle2.BackColor = System.Drawing.SystemColors.ControlDark;
             dataGridViewCellStyle2.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
@@ -137,6 +150,7 @@ namespace ProcessExplorer
             dataGridViewCellStyle3.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
             dataGridViewCellStyle3.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
             this.dataGridView.DefaultCellStyle = dataGridViewCellStyle3;
+            this.dataGridView.GridColor = System.Drawing.SystemColors.ActiveCaptionText;
             this.dataGridView.Location = new System.Drawing.Point(0, 0);
             this.dataGridView.Name = "dataGridView";
             dataGridViewCellStyle4.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
