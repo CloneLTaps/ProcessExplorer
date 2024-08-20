@@ -30,7 +30,7 @@ namespace ProcessExplorer.components
                 comboBox.Width = Math.Max(maxWidth + 20, 180); // Set minimum width and account for padding
                 comboBox.Items.AddRange(dropDownComboBoxArgs);
 
-                string selectedValue = bigEndianHex != null ? bigEndianHex : GetBigEndianValue(header.GetData(selectedRow, 1, PluginInterface.Enums.DataType.HEX, false, false, dataStorage)); // This returns the big endian hex
+                string selectedValue = bigEndianHex != null ? bigEndianHex : GetBigEndianValue(header.GetData(selectedRow, 1, PluginInterface.Enums.DataType.HEX, 1, false, dataStorage)); // This returns the big endian hex
 
                 string matchingString = dropDownComboBoxArgs.FirstOrDefault(str => {
                     int hexPrefixLength = str.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? 2 : 0;
@@ -53,7 +53,7 @@ namespace ProcessExplorer.components
 
                 checkedListBox.Items.AddRange(checkBoxComboBoxArgs);
 
-                string selectedValue = bigEndianHex != null ? bigEndianHex : GetBigEndianValue(header.GetData(selectedRow, 1, PluginInterface.Enums.DataType.HEX, false, false, dataStorage)); // This returns the big endian hex
+                string selectedValue = bigEndianHex != null ? bigEndianHex : GetBigEndianValue(header.GetData(selectedRow, 1, PluginInterface.Enums.DataType.HEX, 1, false, dataStorage)); // This returns the big endian hex
                 string[] combinedStrings = header.ReadCharacteristics(selectedValue);
 
                 int i = 0;

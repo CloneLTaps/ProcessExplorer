@@ -59,8 +59,8 @@ namespace ProcessExplorer.components.impl
                 "0x00100005 - Windows XP", "0x00200005 - Windows XP x64", "0x00000006 - Windows Vista", "0x00100006 - Windows 7", "0x00200006 - Windows 8",
                     "0x00300006 - Windows 8.1", "0x00000010  - Windows 10" };
 
-                string combinedHex = OptionsForm.GetBigEndianValue(GetData(row - 1, 1, PluginInterface.Enums.DataType.HEX, false, false, dataStorage) + " " 
-                    + GetData(row, 1, PluginInterface.Enums.DataType.HEX, false, false, dataStorage));
+                string combinedHex = OptionsForm.GetBigEndianValue(GetData(row - 1, 1, PluginInterface.Enums.DataType.HEX, 1, false, dataStorage) + " " 
+                    + GetData(row, 1, PluginInterface.Enums.DataType.HEX, 1, false, dataStorage));
                 using (OptionsForm optionsForm = new OptionsForm(this, combinedHex, "Minimum Operating System Version", row, options, null, null, dataStorage))
                 {
                     DialogResult result = optionsForm.ShowDialog();
@@ -78,8 +78,8 @@ namespace ProcessExplorer.components.impl
                 "0x00100005 - Windows XP", "0x00200005 - Windows XP x64", "0x00000006 - Windows Vista", "0x00100006 - Windows 7", "0x00200006 - Windows 8",
                     "0x00300006 - Windows 8.1", "0x00000010  - Windows 10" };
 
-                string combinedHex = OptionsForm.GetBigEndianValue(GetData(row - 1, 1, PluginInterface.Enums.DataType.HEX, false, false, dataStorage) + " " 
-                    + GetData(row, 1, PluginInterface.Enums.DataType.HEX, false, false, dataStorage));
+                string combinedHex = OptionsForm.GetBigEndianValue(GetData(row - 1, 1, PluginInterface.Enums.DataType.HEX, 1, false, dataStorage) + " " 
+                    + GetData(row, 1, PluginInterface.Enums.DataType.HEX, 1, false, dataStorage));
                 using (OptionsForm optionsForm = new OptionsForm(this, combinedHex, "Minimum Subsystem Version", row, options, null, null, dataStorage))
                 {
                     DialogResult result = optionsForm.ShowDialog();

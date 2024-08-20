@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using PluginInterface;
 using System.Text;
+using ProcessExplorer.components.impl.innerImpl;
 
 namespace ProcessExplorer 
 {
@@ -52,14 +53,10 @@ namespace ProcessExplorer
             string[,] filesHex = new string[(int)Math.Ceiling(file.Length / 16.0), 3];
 
             PopulateArrays(filesHex); // Passes a reference to the memory address of the above arrays for them to be populated
-            Console.WriteLine("Test 4.1");
             // Create our main storage object that will be passed around to every plugin
             dataStorage = new DataStorage(HandleSettingsFileIO(), filesHex, true, fileName);
-            Console.WriteLine("Test 4.2");
             writerTask = Task.Run(() => FileWriterTaskMethod(), cancellationTokenSource.Token);
-            Console.WriteLine("Test 4.3");
             CalculateHeaders(filesHex);
-            Console.WriteLine("Test 4.4");
         }
 
         public void CalculateHeaders(string[,] filesHex)
@@ -175,11 +172,10 @@ namespace ProcessExplorer
             SectionHeader header = new SectionHeader(dataStorage, headerNameStart, sectionType);
             SectionBody body = new SectionBody(header.bodyStartPoint, header.bodyEndPoint, sectionBodyType);
 
-            if (componentMap.ContainsKey(sectionType)) componentMap[sectionType] = header;
-            else componentMap.Add(sectionType, header);
+            if (ascii == ".rsrc") componentMap["resource header"] = new ResourceHeader(header.bodyStartPoint, dataStorage);
 
-            if (componentMap.ContainsKey(sectionBodyType)) componentMap[sectionBodyType] = body;
-            else componentMap.Add(sectionBodyType, body);
+            componentMap[sectionType] = header;
+            componentMap[sectionBodyType] = body;
 
             // This sets the stopping point to the start of the nearest section body relative to the section header table
             int stopPoint = Math.Min(body.StartPoint > 0 && body.EndPoint - body.StartPoint > 0 ? body.StartPoint : stoppingPoint, stoppingPoint);
@@ -304,11 +300,11 @@ namespace ProcessExplorer
 
 
         /* Returns data that will fill up the DataDisplayView */
-        public string GetValue(int row, int column, bool doubleByte, string component, Enums.DataType type)
+        public string GetValue(int row, int column, byte fieldSize, string component, Enums.DataType type)
         {
             SuperHeader header = GetComponentFromMap(component);
             if (header == null) return "";
-            return header.GetData(row, column, type, doubleByte, Offset == Enums.OffsetType.FILE_OFFSET, dataStorage);
+            return header.GetData(row, column, type, fieldSize, Offset == Enums.OffsetType.FILE_OFFSET, dataStorage);
         }
          
         public void OpenDescrptionForm(string component, int row)

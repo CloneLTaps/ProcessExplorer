@@ -48,8 +48,8 @@ namespace ProcessExplorer.components.impl
 
             SetEndPoint();
 
-            CertificateTablePointer = int.Parse(GetData(8, 1, PluginInterface.Enums.DataType.HEX, true, true, dataStorage), NumberStyles.HexNumber);
-            CertificateTableSize = int.Parse(GetData(9, 1, PluginInterface.Enums.DataType.HEX, true, true, dataStorage), NumberStyles.HexNumber);
+            CertificateTablePointer = int.Parse(GetData(8, 1, PluginInterface.Enums.DataType.HEX, 2, true, dataStorage), NumberStyles.HexNumber);
+            CertificateTableSize = int.Parse(GetData(9, 1, PluginInterface.Enums.DataType.HEX, 2, true, dataStorage), NumberStyles.HexNumber);
         }
 
         public override void OpenForm(int row, PluginInterface.DataStorage dataStorage)

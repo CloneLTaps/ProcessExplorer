@@ -26,8 +26,8 @@ namespace ProcessExplorer.components.impl
 
             SetEndPoint();
 
-            bodyStartPoint = Convert.ToInt32(GetBigEndianValue(GetData(4, 1, PluginInterface.Enums.DataType.HEX, false, true, dataStorage)), 16);
-            bodyEndPoint = Convert.ToInt32(GetBigEndianValue(GetData(3, 1, PluginInterface.Enums.DataType.HEX, false, true, dataStorage)), 16) + bodyStartPoint;
+            bodyStartPoint = Convert.ToInt32(GetBigEndianValue(GetData(4, 1, PluginInterface.Enums.DataType.HEX, 1, true, dataStorage)), 16);
+            bodyEndPoint = Convert.ToInt32(GetBigEndianValue(GetData(3, 1, PluginInterface.Enums.DataType.HEX, 1, true, dataStorage)), 16) + bodyStartPoint;
         }
 
         public override void OpenForm(int row, PluginInterface.DataStorage dataStorage)

@@ -37,7 +37,7 @@ namespace PluginInterface
                 int startingRow = (int)Math.Floor(header.StartPoint / 16.0);
                 int endingRow = (int)Math.Floor(header.EndPoint / 16.0);
 
-                int rowOffset = int.Parse(header.GetData(row, 0, DataType.DECIMAL, false, true, data));
+                int rowOffset = int.Parse(header.GetData(row, 0, DataType.DECIMAL, 1, true, data));
                 int compensatedRow = (int)Math.Floor(rowOffset / 16.0); // This is our row relative to the start of the file
 
                 if (compensatedRow >= startingRow && compensatedRow <= endingRow) list.Add(header);

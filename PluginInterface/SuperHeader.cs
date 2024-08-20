@@ -62,7 +62,7 @@ namespace PluginInterface
 
             if (!isBody)
             {   // This is the easy case since all of the data can be queried and stored on a single line
-                hex = GetData(row, 1, DataType.HEX, false, true, dataStorage).Replace(" ", "");
+                hex = GetData(row, 1, DataType.HEX, 1, true, dataStorage).Replace(" ", "");
                 if (hex.Length % 2 != 0) throw new ArgumentException("Hex string must have an even number of characters.");
 
                 Console.WriteLine("Type Hex:" + hex);
@@ -71,7 +71,7 @@ namespace PluginInterface
 
             for (int i = 0; i < RowSize; i++)
             {   // This handles bodies of data like in chunk bodies or section bodies
-                string newHexLine = GetData(i, 1, DataType.HEX, false, true, dataStorage).Replace(" ", "");
+                string newHexLine = GetData(i, 1, DataType.HEX, 1, true, dataStorage).Replace(" ", "");
                 if (hexBuilder.Length % 2 != 0) throw new ArgumentException("Hex string must have an even number of characters.");
                 hexBuilder.Append(newHexLine);
             }
@@ -83,7 +83,7 @@ namespace PluginInterface
 
 
         /// <param name="column"> Column of 0 means offset, column of 1 means data, and column of 2 means description. </param>
-        public string GetData(int row, int column, DataType dataType, bool bigEndian, bool inFileOffset, DataStorage dataStroage)
+        public string GetData(int row, int column, DataType dataType, byte fieldSize, bool inFileOffset, DataStorage dataStroage)
         {
             if (FailedToInitlize) return "";  // Something went wrong with this file so don't return any text
             if (Size != null && row >= Size.Length) return "";  // This returns the blank text for index larger than the size of our headers
@@ -93,7 +93,7 @@ namespace PluginInterface
 
             if (Component == "everything")
             {
-                if (column == 0 && dataStroage.Settings.OffsetsInHex) return GetCorrectFormat(row, column, DataType.HEX, bigEndian, dataStroage);
+                if (column == 0 && dataStroage.Settings.OffsetsInHex) return GetCorrectFormat(row, column, DataType.HEX, fieldSize, dataStroage);
             }
             int firstRow = (int)Math.Floor(StartPoint / 16.0);  // First row of our data
 
@@ -104,7 +104,7 @@ namespace PluginInterface
             {
                 if(mod16 == 0)
                 {   // Something like Dos Stub or section bodies (mirrors the original data) while being aligned with 16 byte rows
-                    if (column != 0) return GetCorrectFormat(row + firstRow, column, dataType, bigEndian, dataStroage);
+                    if (column != 0) return GetCorrectFormat(row + firstRow, column, dataType, fieldSize, dataStroage);
                 }
 
                 if(column == 0)
@@ -153,8 +153,8 @@ namespace PluginInterface
 
             for (int i = startingDataRow; i < dataStroage.GetFilesRows(); i++)
             {   // Looping through our rows
-                if (data == null) data = SplitString(GetCorrectFormat(i, column, bigEndian ? DataType.HEX : dataType, false, dataStroage), column);
-                else data = data.Concat(SplitString(GetCorrectFormat(i, column, bigEndian ? DataType.HEX : dataType, false, dataStroage), column)).ToArray();
+                if (data == null) data = SplitString(GetCorrectFormat(i, column, fieldSize > 1 ? DataType.HEX : dataType, 1, dataStroage), column);
+                else data = data.Concat(SplitString(GetCorrectFormat(i, column, fieldSize > 1 ? DataType.HEX : dataType, 1, dataStroage), column)).ToArray();
 
                 int weight = data.Length;
                 if (weight >= startingRowOffset + bytes) break;  // This means our data array now contains enough data to retrieve the requested data
@@ -164,9 +164,9 @@ namespace PluginInterface
             if (column == 2) return string.Join("", data.Skip(startingRowOffset).Take(bytes));
 
             string finalData = string.Join(" ", data.Skip(startingRowOffset).Take(bytes));
-            if (bigEndian)
+            if (fieldSize > 1)
             {
-                string splitHex = GetBigEndian(finalData.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries), dataStroage.Settings.RemoveZeros);
+                string splitHex = GetBigEndian(finalData.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries), fieldSize, dataStroage.Settings.RemoveZeros);
 
                 if (dataType == DataType.HEX) return splitHex;
 
@@ -174,7 +174,7 @@ namespace PluginInterface
                 switch (dataType)
                 {
                     case DataType.DECIMAL: return string.Join(" ", hexArray.Select(hexPair => ulong.Parse(hexPair, NumberStyles.HexNumber)));
-                    case DataType.BINARY: return string.Join(" ", hexArray.Select(hexPair => Convert.ToString(Convert.ToInt64(hexPair, 16), 2)));
+                    case DataType.BINARY: return string.Join(" ", hexArray.Select(hexPair => Convert.ToString(Convert.ToInt64(hexPair, 16), fieldSize)));
                 }
             }
             return finalData;
@@ -186,11 +186,11 @@ namespace PluginInterface
             return (data.ToCharArray().Select(c => c.ToString()).ToArray()).Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
         }
 
-        private string GetCorrectFormat(int row, int column, DataType dataType, bool bigEndian, DataStorage data)
+        private string GetCorrectFormat(int row, int column, DataType dataType, byte fieldSize, DataStorage data)
         {
-            if (bigEndian && column == 1)
+            if (fieldSize > 1 && column == 1)
             {
-                string bigEndianHex = GetBigEndian(data.FilesHex[row, column].Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries), data.Settings.RemoveZeros);
+                string bigEndianHex = GetBigEndian(data.FilesHex[row, column].Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries), fieldSize, data.Settings.RemoveZeros);
                 string[] hexArray = bigEndianHex.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                 switch (dataType)
                 {
@@ -211,7 +211,7 @@ namespace PluginInterface
             };
         }
 
-        private string GetBigEndian(string[] hexPairs, bool removeZeros)
+        private string GetBigEndian(string[] hexPairs, byte fieldSize, bool removeZeros)
         {
             if (Size != null)
             {
@@ -223,31 +223,40 @@ namespace PluginInterface
                 return bigEndian;
             }
 
-            // This is for headers and sections of data that dont have descriptions 
-            string reversedHexValues = string.Join(" ",
-            hexPairs.Where((value, index) => index % 2 == 1)
-                .Select((value, index) =>
+            if (fieldSize != 2 && fieldSize != 4 && fieldSize != 8) throw new ArgumentException("Size must be 2, 4, or 8");
+
+            StringBuilder finalString = new StringBuilder();
+            StringBuilder stringBuilder = new StringBuilder();
+            int index = 0;
+
+            for (int i = 0; i < hexPairs.Length; i++)
+            {
+                bool atEnd = i == hexPairs.Length - 1;
+                string pair = hexPairs[i];
+                if (removeZeros && pair == "00") pair = "0";
+
+                if (i % fieldSize == 0 || atEnd)
                 {
-                    // This part changes the extra 0's into a single 0
-                    string firstPart = hexPairs[index * 2 + 1];
-                    string secondPart = hexPairs[index * 2];
-                    string combined = FileFormatedLittleEndian ? firstPart + secondPart : secondPart + firstPart;
-                    if (removeZeros)
-                    {
-                        if (secondPart == "00" && firstPart == "00") combined = "0";
-                        else if ((combined = combined.TrimStart('0')).Length == 0) combined = "0";
-                    }
-                    return combined;
-                }));
-            return reversedHexValues;
+                    if (atEnd) stringBuilder.Append(pair);
+                    finalString.Append(GetBigEndianValueNoSpaces(stringBuilder.ToString()) + " ");
+                    if (atEnd) break;
+
+                    stringBuilder = new StringBuilder();
+                    index++;
+                }
+
+                stringBuilder.Append(pair);
+            }
+
+            return finalString.ToString().TrimEnd();
         }
 
         public void UpdateData(int row, string data, bool isHexChecked, bool isDecimalChecked, DataStorage dataStorage)
         {
-            int orignalLength = (GetData(row, 1, DataType.HEX, false, false, dataStorage).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)).Length;
+            int orignalLength = (GetData(row, 1, DataType.HEX, 1, false, dataStorage).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)).Length;
             string[,] values = GetValueVariations(data, isHexChecked, isDecimalChecked);
 
-            int offset = int.Parse(GetData(row, 0, DataType.DECIMAL, false, true, dataStorage)); // This gets the file offset in decimal form
+            int offset = int.Parse(GetData(row, 0, DataType.DECIMAL, 1, true, dataStorage)); // This gets the file offset in decimal form
             int everythingRow = (int)Math.Floor(offset / 16.0);
             int everythingRowOffset = int.Parse(dataStorage.GetFilesDecimal(everythingRow, 0));
             int dataByteLength = values.GetLength(0);
@@ -315,6 +324,25 @@ namespace PluginInterface
             Array.Reverse(values);
             string bigEndian = string.Concat(values).Replace(" ", "");
             return bigEndian;
+        }
+
+        public static string GetBigEndianValueNoSpaces(string littleEndian)
+        {
+            List<string> pairs = new List<string>();
+
+            for (int i = 0; i < littleEndian.Length; i += 2)
+            {   // Process the string in pairs of characters
+                if (i + 1 < littleEndian.Length)
+                {   // If there's at least two characters left, add as a pair
+                    pairs.Add(littleEndian.Substring(i, 2));
+                }
+                else
+                {   // If only one character left, add it as a single character
+                    pairs.Add(littleEndian.Substring(i, 1));
+                }
+            }
+            pairs.Reverse();
+            return string.Concat(pairs); ;
         }
 
     }

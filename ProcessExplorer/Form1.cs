@@ -25,6 +25,9 @@ namespace ProcessExplorer
         private CharacterSet selectedCharacter = CharacterSet.ASCII;
         private ProcessHandler processHandler;
 
+        /// <summary> This denotes the size of the data. Anything larger than 1 will be converted to big endian. Can either be 1, 2, 4, or 8. </summary>
+        private byte fieldSize = 1;
+
         public Form1(Dictionary<string, IPlugin> loadedPlugins)
         {
             this.loadedPlugins = loadedPlugins;
@@ -443,16 +446,19 @@ namespace ProcessExplorer
                 foreach (var innerMap in processHandler.componentMap)
                 {
                     SuperHeader body = innerMap.Value;
-                    string newCompString = body.Component.ToString();
+                    string newCompString = body.Component;
 
-                    if (!newCompString.Contains("section body") || compString.Replace("section header", "") != newCompString.Replace("section body", "")) continue;
-
-                    TreeNode sectionBodyNode = new TreeNode("")
+                    if(compString.Contains(".rsrc"))
                     {
-                        Text = body.Component
-                    };
+                        if (newCompString.Contains("resource")) newCompString = "Resource Header";
+                        else if (newCompString != (".rsrc section body")) continue;
+                    }
+                    else if (!newCompString.Contains("section body") || compString.Replace("section header", "") != newCompString.Replace("section body", "")) continue;
+
+                    TreeNode sectionBodyNode = new TreeNode(newCompString);
                     sectionNode.Nodes.Add(sectionBodyNode);
-                    break;
+
+                    if(!compString.Contains(".rsrc")) break;
                 }
                 mainSectionNode.Nodes.Add(sectionNode); // Add the main section node for each section to our parent node
             }
@@ -523,8 +529,7 @@ namespace ProcessExplorer
                     fileOffsetButton.Checked = false;
                     processHandler.Offset = Enums.OffsetType.RELATIVE_OFFSET;
                     // RelativeOffset and FileOffsets are the same if you are viewing everything 
-                    if (selectedComponent != "everything")
-                        TriggerRedraw();
+                    if (selectedComponent != "everything") dataGridView.Invalidate();
                 }
                 relativeOffsetButton.Checked = true;
             }
@@ -533,18 +538,48 @@ namespace ProcessExplorer
                 if(singleByteButton.Checked)
                 {
                     doubleByteButton.Checked = false;
-                    TriggerRedraw();
+                    fourByteButton.Checked = false;
+                    eightByteButton.Checked = false;
+                    dataGridView.Invalidate();
                 }
                 singleByteButton.Checked = true;
+                fieldSize = 1;
             }
             else if(text == "BB")
             {
                 if(doubleByteButton.Checked)
                 {
                     singleByteButton.Checked = false;
-                    TriggerRedraw();
+                    fourByteButton.Checked = false;
+                    eightByteButton.Checked = false;
+                    dataGridView.Invalidate();
                 }
                 doubleByteButton.Checked = true;
+                fieldSize = 2;
+            }
+            else if (text == "B4")
+            {
+                if (fourByteButton.Checked)
+                {
+                    singleByteButton.Checked = false;
+                    doubleByteButton.Checked = false;
+                    eightByteButton.Checked = false;
+                    dataGridView.Invalidate();
+                }
+                fourByteButton.Checked = true;
+                fieldSize = 4;
+            }
+            else if (text == "B8")
+            {
+                if (eightByteButton.Checked)
+                {
+                    singleByteButton.Checked = false;
+                    doubleByteButton.Checked = false;
+                    fourByteButton.Checked = false;
+                    dataGridView.Invalidate();
+                }
+                eightByteButton.Checked = true;
+                fieldSize = 8;
             }
 
         }
@@ -758,13 +793,13 @@ namespace ProcessExplorer
             }
             else
             {   // Else I need to update the data source inside everything since the edit took place in a header
-                int orignalLength = (selectedHeader.GetData(row, 1, DataType.HEX, false, false, processHandler.dataStorage).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)).Length;
+                int orignalLength = (selectedHeader.GetData(row, 1, DataType.HEX, 1, false, processHandler.dataStorage).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)).Length;
                 int fieldsSize = selectedHeader.Size != null ? selectedHeader.Size[row] : -1; // Fields can only be larger than 16 bytes if they implement a size
                 Console.WriteLine("Other NewValueArrayLength:" + newValueArray.Length + " FieldSize:" + fieldsSize + " OriginalLength:" + orignalLength + " Row:" + row);
                 if (unModifiedNewValueLength == orignalLength) selectedHeader.UpdateData(row, newValue, true, false, processHandler.dataStorage);
                 else // Else I need to update the rows since we are either under or overflowing
                 {
-                    int offset = int.Parse(selectedHeader.GetData(row, 0, DataType.DECIMAL, false, true, processHandler.dataStorage)); // This gets the file offset in decimal form
+                    int offset = int.Parse(selectedHeader.GetData(row, 0, DataType.DECIMAL, 1, true, processHandler.dataStorage)); // This gets the file offset in decimal form
                     int everythingRow = (int)Math.Floor(offset / 16.0);
                     int everythingRowOffset = int.Parse(processHandler.dataStorage.GetFilesDecimal(everythingRow, 0));
                     int difference = offset - everythingRowOffset; // Difference between the headers data's offset and the main rows offset  
@@ -857,7 +892,7 @@ namespace ProcessExplorer
         private void DataGridView_CellValueNeeded(object sender, DataGridViewCellValueEventArgs e)
         { 
             Enums.DataType type = hexButton.Checked ? Enums.DataType.HEX : decimalButton.Checked ? Enums.DataType.DECIMAL : Enums.DataType.BINARY;
-            e.Value = processHandler.GetValue(e.RowIndex, e.ColumnIndex, doubleByteButton.Checked, selectedComponent, type);
+            e.Value = processHandler.GetValue(e.RowIndex, e.ColumnIndex, fieldSize, selectedComponent, type);
         }
 
         /* This will open a custom form for selected cells that */

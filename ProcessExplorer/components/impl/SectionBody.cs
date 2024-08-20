@@ -2,7 +2,7 @@
 
 namespace ProcessExplorer.components.impl
 {
-    class SectionBody : PluginInterface.SuperHeader
+    public class SectionBody : PluginInterface.SuperHeader
     {
 
         public SectionBody(int startingPoint, int endPoint, string sectionType) : base("section body", (int)Math.Ceiling((endPoint - startingPoint) / 16.0), 3)

@@ -69,6 +69,8 @@ namespace ProcessExplorer
             this.settingsLabel = new System.Windows.Forms.Label();
             this.blankTopLabel = new System.Windows.Forms.Label();
             this.pluginsLabel = new System.Windows.Forms.Label();
+            this.fourByteButton = new System.Windows.Forms.ToolStripButton();
+            this.eightByteButton = new System.Windows.Forms.ToolStripButton();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -221,6 +223,8 @@ namespace ProcessExplorer
             this.toolStripSeparator2,
             this.singleByteButton,
             this.doubleByteButton,
+            this.fourByteButton,
+            this.eightByteButton,
             this.toolStripSeparator3,
             this.replaceButton,
             this.characterSet,
@@ -422,6 +426,28 @@ namespace ProcessExplorer
             this.pluginsLabel.MouseLeave += new System.EventHandler(this.PluginsLabel_MouseLeave);
             this.pluginsLabel.MouseHover += new System.EventHandler(this.PluginsLabel_MouseHover);
             // 
+            // fourByteButton
+            // 
+            this.fourByteButton.AutoSize = false;
+            this.fourByteButton.CheckOnClick = true;
+            this.fourByteButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.fourByteButton.Image = ((System.Drawing.Image)(resources.GetObject("fourByteButton.Image")));
+            this.fourByteButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.fourByteButton.Name = "fourByteButton";
+            this.fourByteButton.Size = new System.Drawing.Size(24, 22);
+            this.fourByteButton.Text = "B4";
+            // 
+            // eightByteButton
+            // 
+            this.eightByteButton.AutoSize = false;
+            this.eightByteButton.CheckOnClick = true;
+            this.eightByteButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.eightByteButton.Image = ((System.Drawing.Image)(resources.GetObject("eightByteButton.Image")));
+            this.eightByteButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.eightByteButton.Name = "eightByteButton";
+            this.eightByteButton.Size = new System.Drawing.Size(24, 22);
+            this.eightByteButton.Text = "B8";
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
@@ -479,6 +505,8 @@ namespace ProcessExplorer
         private ToolStripDropDownButton characterSet;
         private ToolStripMenuItem aSCIIToolStripMenuItem;
         private Label pluginsLabel;
+        private ToolStripButton fourByteButton;
+        private ToolStripButton eightByteButton;
     }
 }
 
