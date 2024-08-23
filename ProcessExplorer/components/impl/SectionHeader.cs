@@ -1,12 +1,16 @@
 ﻿using System;
+using PluginInterface;
 
 namespace ProcessExplorer.components.impl
 {
-    class SectionHeader : PluginInterface.SuperHeader
+    public class SectionHeader : SuperHeader
     {
-        public readonly int bodyStartPoint, bodyEndPoint;
+        public uint BodyStartPoint { get; private set; }
+        public uint BodyEndPoint { get; private set; }
 
-        public SectionHeader(PluginInterface.DataStorage dataStorage, int startingPoint, string sectionType) : base("section header", 10, 3)
+        public int VirtualAddress { get; private set; }
+
+        public SectionHeader(DataStorage dataStorage, uint startingPoint, string sectionType) : base("section header", 10, 3)
         {
             StartPoint = startingPoint;
             Component = sectionType;
@@ -26,11 +30,15 @@ namespace ProcessExplorer.components.impl
 
             SetEndPoint();
 
-            bodyStartPoint = Convert.ToInt32(GetBigEndianValue(GetData(4, 1, PluginInterface.Enums.DataType.HEX, 1, true, dataStorage)), 16);
-            bodyEndPoint = Convert.ToInt32(GetBigEndianValue(GetData(3, 1, PluginInterface.Enums.DataType.HEX, 1, true, dataStorage)), 16) + bodyStartPoint;
+            VirtualAddress = int.Parse(GetData(2, 1, Enums.DataType.DECIMAL, 2, true, dataStorage));
+            BodyStartPoint = Convert.ToUInt32(GetData(4, 1, Enums.DataType.DECIMAL, 2, true, dataStorage));
+            BodyEndPoint = Convert.ToUInt32(GetData(3, 1, Enums.DataType.DECIMAL, 2, true, dataStorage)) + BodyStartPoint;
+
+            Console.WriteLine($"Section Header:{sectionType} BodyStart:{BodyStartPoint} BodyEndPoint:{BodyEndPoint} VA:{VirtualAddress} Start2:{GetData(4, 1, Enums.DataType.DECIMAL, 2, true, dataStorage)}" +
+                $" Size:{GetData(3, 1, Enums.DataType.DECIMAL, 2, true, dataStorage)}");
         }
 
-        public override void OpenForm(int row, PluginInterface.DataStorage dataStorage)
+        public override void OpenForm(int row, DataStorage dataStorage)
         {
             return;
         }

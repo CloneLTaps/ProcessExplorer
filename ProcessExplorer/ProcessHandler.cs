@@ -12,10 +12,12 @@ using System.Threading.Tasks;
 using PluginInterface;
 using System.Text;
 using ProcessExplorer.components.impl.innerImpl;
+using ProcessExplorer.components.impl.innerSectionImpl;
+using System.Windows.Forms;
 
 namespace ProcessExplorer 
 {
-    class ProcessHandler
+    public class ProcessHandler
     {
         public string FilePath { get; private set; }
 
@@ -23,7 +25,7 @@ namespace ProcessExplorer
 
         public Enums.OffsetType Offset { get; set; }
 
-        private int HeaderEndPoint { get; set; }
+        private uint HeaderEndPoint { get; set; }
 
         // These following fields are all only initlized inside the constructor and thus marked 'readonly' 
         public readonly Dictionary<string, SuperHeader> componentMap = new Dictionary<string, SuperHeader>();
@@ -78,7 +80,7 @@ namespace ProcessExplorer
 
             componentMap.Add("optional pe header", new OptionalPeHeader(dataStorage, GetComponentFromMap("pe header").EndPoint));
 
-            int endPoint;
+            uint endPoint;
             if (((OptionalPeHeader)GetComponentFromMap("optional pe header")).validHeader)
             { // This means we most likely have either 64 or 32 bit option headers
                 if (((OptionalPeHeader)GetComponentFromMap("optional pe header")).peThirtyTwoPlus)
@@ -112,13 +114,13 @@ namespace ProcessExplorer
             AssignSectionHeaders(endPoint, int.MaxValue, peHeader.SectionAmount, 0);
         }
 
-        private void AssignSectionHeaders(int startPoint, int stoppingPoint, int sectionAmount, int sectionCount)
+        private void AssignSectionHeaders(uint startPoint, uint stoppingPoint, int sectionAmount, int sectionCount)
         {
-            int initialSkipAmount = startPoint % 16; // The amount we need to skip before we reach our target byte 
+            int initialSkipAmount = (int)(startPoint % 16); // The amount we need to skip before we reach our target byte 
             int startingIndex = startPoint <= 0 ? 0 : (int)Math.Floor(startPoint / 16.0);
 
             StringBuilder asciiBuilder = new StringBuilder(); // Section name
-            int headerNameStart = 0;
+            uint headerNameStart = 0;
             int headerNameCount = 0;
             for (int row = startingIndex; row < dataStorage.FilesHex.GetLength(0); row++) // Loop through the rows
             {
@@ -130,7 +132,7 @@ namespace ProcessExplorer
                     {
                         char asciiChar = b > 32 && b <= 126 ? (char)b : ' '; // Space is normally 32 in decimal
                         asciiBuilder.Append(asciiChar);
-                        int currentOffset = startPoint + ((row - startingIndex) * 16) + (initialSkipAmount > 0 ? 0 : j); // initialSkipAmount is already compensated by startPoint
+                        uint currentOffset = (uint)(startPoint + ((row - startingIndex) * 16) + (initialSkipAmount > 0 ? 0 : j)); // initialSkipAmount is already compensated by startPoint
 
                         if (currentOffset >= stoppingPoint) return; // This means a section body is about to start so we found all the headers
 
@@ -143,7 +145,8 @@ namespace ProcessExplorer
                         {
                             if (headerNameCount < 4 && asciiChar == ' ')
                             {
-                                headerNameStart = headerNameCount = 0;
+                                headerNameStart = 0;
+                                headerNameCount = 0;
                                 asciiBuilder.Clear();
                             }
                         }
@@ -156,7 +159,8 @@ namespace ProcessExplorer
                                 asciiBuilder.Clear();
                                 return;
                             }
-                            headerNameStart = headerNameCount = 0;
+                            headerNameStart = 0;
+                            headerNameCount = 0;
                             asciiBuilder.Clear();
                         }
                     }
@@ -165,23 +169,39 @@ namespace ProcessExplorer
             }
         }
 
-        private void ProcessSectionHeader(int startPoint, int stoppingPoint, int sectionAmount, int sectionCount, int headerNameStart, string ascii)
+        private void ProcessSectionHeader(uint startPoint, uint stoppingPoint, int sectionAmount, int sectionCount, uint headerNameStart, string ascii)
         {
             string sectionType = ascii + " section header";
             string sectionBodyType = ascii + " section body";
             SectionHeader header = new SectionHeader(dataStorage, headerNameStart, sectionType);
-            SectionBody body = new SectionBody(header.bodyStartPoint, header.bodyEndPoint, sectionBodyType);
-
-            if (ascii == ".rsrc") componentMap["resource header"] = new ResourceHeader(header.bodyStartPoint, dataStorage);
-
+            SectionBody body = new SectionBody(header.BodyStartPoint, header.BodyEndPoint, sectionBodyType);
             componentMap[sectionType] = header;
             componentMap[sectionBodyType] = body;
+            Console.WriteLine($"SectionHeader:{sectionType}");
+
+            if (ascii == ".rsrc")
+            {
+                try
+                {
+                    ResourceHeader rsrcHeader = new ResourceHeader(header.BodyStartPoint, "base resource header", dataStorage);
+                    componentMap["base resource header"] = rsrcHeader;
+                    TreeNode rsrcNode = new TreeNode(".rsrc section header");
+                    int count = 0;
+                    rsrcHeader.AddResources(rsrcHeader.StartPoint, "base resource table", componentMap, rsrcNode, ref count);
+                    rsrcHeader.RsrcNode = rsrcNode;
+                } catch (Exception e)
+                {
+                    Console.WriteLine($"Message:{e.Message}  Exception: {e.StackTrace}");
+                }
+            }
 
             // This sets the stopping point to the start of the nearest section body relative to the section header table
-            int stopPoint = Math.Min(body.StartPoint > 0 && body.EndPoint - body.StartPoint > 0 ? body.StartPoint : stoppingPoint, stoppingPoint);
+            uint stopPoint = Math.Min(body.StartPoint > 0 && body.EndPoint - body.StartPoint > 0 ? body.StartPoint : stoppingPoint, stoppingPoint);
 
             if (++sectionCount < sectionAmount) // This means we found all of the section headers
                 AssignSectionHeaders(header.EndPoint, stopPoint, sectionAmount, sectionCount);
+
+            Console.WriteLine("ProcessSectionHeader Complete!");
         }
 
         private void PopulateArrays(string[,] filesHex)

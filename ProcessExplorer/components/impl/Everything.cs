@@ -1,10 +1,11 @@
 ﻿using System;
+using PluginInterface;
 
 namespace ProcessExplorer.components.impl
 {
-    class Everything : PluginInterface.SuperHeader
+    public class Everything : SuperHeader
     {
-        public Everything(PluginInterface.DataStorage dataStorage, int length) : base("everything", length, 3) 
+        public Everything(DataStorage dataStorage, int length) : base("everything", length, 3) 
         {
             StartPoint = 0;
             Size = null;
@@ -16,10 +17,10 @@ namespace ProcessExplorer.components.impl
             string lastlineOfHex = dataStorage.FilesHex[length - 1, 1];
             string[] hexBytes = lastlineOfHex.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             int byteCount = hexBytes.Length;
-            EndPoint = Convert.ToInt32(dataStorage.GetFilesDecimal(length - 1, 0)) + byteCount;
+            EndPoint = (uint)(Convert.ToUInt32(dataStorage.GetFilesDecimal(length - 1, 0)) + byteCount);
         }
 
-        public override void OpenForm(int row, PluginInterface.DataStorage dataStorage)
+        public override void OpenForm(int row, DataStorage dataStorage)
         {
             return; // No custom forms required here
         }

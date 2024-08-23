@@ -1,13 +1,13 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using System.Windows.Forms;
 using System.Collections.Generic;
+using PluginInterface;
 
 namespace ProcessExplorer.components.impl
 {
-    class OptionalPeHeader64 : PluginInterface.SuperHeader
+    class OptionalPeHeader64 : SuperHeader
     {
-        public OptionalPeHeader64(int startingPoint) : base("optional pe header 64", 21, 3)
+        public OptionalPeHeader64(uint startingPoint) : base("optional pe header 64", 21, 3)
         {
             StartPoint = startingPoint;
 
@@ -51,7 +51,7 @@ namespace ProcessExplorer.components.impl
             };
         }
 
-        public override void OpenForm(int row, PluginInterface.DataStorage dataStorage) 
+        public override void OpenForm(int row, DataStorage dataStorage) 
         {
             if (row == 4)
             {

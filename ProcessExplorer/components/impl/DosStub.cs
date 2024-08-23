@@ -1,10 +1,11 @@
 ﻿using System;
+using PluginInterface;
 
-namespace ProcessExplorer.components
+namespace ProcessExplorer.components.impl
 {
-    class DosStub : PluginInterface.SuperHeader
+    public class DosStub : SuperHeader
     {
-        public DosStub(ProcessHandler processHandler, PluginInterface.DataStorage dataStorage, int startPoint) : base("dos stub", 1, 3) 
+        public DosStub(ProcessHandler processHandler, DataStorage dataStorage, uint startPoint) : base("dos stub", 1, 3) 
         {
             if (processHandler.GetComponentFromMap("everything").EndPoint <= processHandler.GetComponentFromMap("dos header").EndPoint) 
             {   // This means our PE only consits of a PE Header 
@@ -21,7 +22,7 @@ namespace ProcessExplorer.components
             {
                 string[] hexArray = dataStorage.FilesHex[row, 1].Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
-                int offset = StartPoint;
+                uint offset = StartPoint;
                 string signature = "";
                 for (int i = 0; i < hexArray.Length; i++)
                 {
@@ -30,7 +31,7 @@ namespace ProcessExplorer.components
 
                     if (str == "50")
                     {
-                        offset = (row * 16) + i;
+                        offset = (uint)((row * 16) + i);
                         signature = "50";
                     }
                     else signature += str;
@@ -46,7 +47,7 @@ namespace ProcessExplorer.components
             FailedToInitlize = true;
         }
 
-        public override void OpenForm(int row, PluginInterface.DataStorage dataStorage)
+        public override void OpenForm(int row, DataStorage dataStorage)
         {
             return; // No custom forms required here
         }

@@ -3,13 +3,15 @@ using System.Linq;
 using System.Globalization;
 using System.Windows.Forms;
 using System.Collections.Generic;
+using PluginInterface;
 
 namespace ProcessExplorer.components
 {
-    class PeHeader : PluginInterface.SuperHeader
+    public class PeHeader : SuperHeader
     {
         public int SectionAmount { get; private set; }
-        public PeHeader(ProcessHandler processHandler, PluginInterface.DataStorage dataStorage, int startingPoint) : base("pe header", 8, 3)
+
+        public PeHeader(ProcessHandler processHandler, DataStorage dataStorage, uint startingPoint) : base("pe header", 8, 3)
         {
             if(processHandler.GetComponentFromMap("everything").EndPoint <= 
                 processHandler.GetComponentFromMap("dos stub").EndPoint + 24)
@@ -33,17 +35,17 @@ namespace ProcessExplorer.components
 
             SetEndPoint();
 
-            string[] signatureHex = GetData(0, 1, PluginInterface.Enums.DataType.HEX, 1, true, dataStorage).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] signatureHex = GetData(0, 1, Enums.DataType.HEX, 1, true, dataStorage).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             if (signatureHex[0] != "50" || signatureHex[1] != "45" && signatureHex[2] != "00" || signatureHex[3] != "00")
             {   // This means this is not a valid PE since the header signature was incorrect
                 FailedToInitlize = true; 
                 return;
             }
 
-            int bit = int.Parse(GetBigEndianValue(GetData(1, 1, PluginInterface.Enums.DataType.HEX, 1, true, dataStorage)), NumberStyles.HexNumber);
+            int bit = int.Parse(GetBigEndianValue(GetData(1, 1, Enums.DataType.HEX, 1, true, dataStorage)), NumberStyles.HexNumber);
             dataStorage.Is64Bit = (bit == 0x8664);
 
-            SectionAmount = int.Parse(GetData(2, 1, PluginInterface.Enums.DataType.DECIMAL, 2, true, dataStorage)); // Sets the amount of sections
+            SectionAmount = int.Parse(GetData(2, 1, Enums.DataType.DECIMAL, 2, true, dataStorage)); // Sets the amount of sections
 
             // None of our headers have more than 1 characteristic type structure 
             Characteristics = new Dictionary<int, string> {
@@ -66,7 +68,7 @@ namespace ProcessExplorer.components
             };
         }
 
-        public override void OpenForm(int row, PluginInterface.DataStorage dataStorage)
+        public override void OpenForm(int row, DataStorage dataStorage)
         {
             if(row == 1)
             {
@@ -93,7 +95,7 @@ namespace ProcessExplorer.components
             }
             else if(row == 3)
             {
-                string hexValue = GetData(row, 1, PluginInterface.Enums.DataType.HEX, 2, false, dataStorage);
+                string hexValue = GetData(row, 1, Enums.DataType.HEX, 2, false, dataStorage);
                 uint unixTimestamp = uint.Parse(hexValue, NumberStyles.HexNumber);
 
                 DateTime unixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);

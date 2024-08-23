@@ -17,7 +17,7 @@ namespace PluginInterface
         /// <summary>
         ///  Takes in a normal decimal integer for offset and returns the converted data type in string form
         /// </summary>
-        public static string GetOffset(int offset, DataType dataType)
+        public static string GetOffset(uint offset, DataType dataType)
         {
             switch (dataType)
             {

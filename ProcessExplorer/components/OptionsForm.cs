@@ -3,6 +3,7 @@ using System.Linq;
 using System.Globalization;
 using System.Drawing;
 using System.Windows.Forms;
+using PluginInterface;
 
 namespace ProcessExplorer.components
 {
@@ -14,8 +15,8 @@ namespace ProcessExplorer.components
         private Button okButton;
 
 #pragma warning disable CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
-        public OptionsForm(PluginInterface.SuperHeader header, string? bigEndianHex, string windowName, int selectedRow, string[] dropDownComboBoxArgs, string[] checkBoxComboBoxArgs,
-            DateTime? initialDateTime, PluginInterface.DataStorage dataStorage)
+        public OptionsForm(SuperHeader header, string? bigEndianHex, string windowName, int selectedRow, string[] dropDownComboBoxArgs, string[] checkBoxComboBoxArgs,
+            DateTime? initialDateTime, DataStorage dataStorage)
         {
             Text = windowName;
             InitializeComponents();
@@ -53,7 +54,7 @@ namespace ProcessExplorer.components
 
                 checkedListBox.Items.AddRange(checkBoxComboBoxArgs);
 
-                string selectedValue = bigEndianHex != null ? bigEndianHex : GetBigEndianValue(header.GetData(selectedRow, 1, PluginInterface.Enums.DataType.HEX, 1, false, dataStorage)); // This returns the big endian hex
+                string selectedValue = bigEndianHex != null ? bigEndianHex : GetBigEndianValue(header.GetData(selectedRow, 1, Enums.DataType.HEX, 1, false, dataStorage)); // This returns the big endian hex
                 string[] combinedStrings = header.ReadCharacteristics(selectedValue);
 
                 int i = 0;

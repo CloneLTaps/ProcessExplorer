@@ -60,6 +60,8 @@ namespace ProcessExplorer
             this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.singleByteButton = new System.Windows.Forms.ToolStripButton();
             this.doubleByteButton = new System.Windows.Forms.ToolStripButton();
+            this.fourByteButton = new System.Windows.Forms.ToolStripButton();
+            this.eightByteButton = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator3 = new System.Windows.Forms.ToolStripSeparator();
             this.replaceButton = new System.Windows.Forms.ToolStripButton();
             this.characterSet = new System.Windows.Forms.ToolStripDropDownButton();
@@ -69,8 +71,7 @@ namespace ProcessExplorer
             this.settingsLabel = new System.Windows.Forms.Label();
             this.blankTopLabel = new System.Windows.Forms.Label();
             this.pluginsLabel = new System.Windows.Forms.Label();
-            this.fourByteButton = new System.Windows.Forms.ToolStripButton();
-            this.eightByteButton = new System.Windows.Forms.ToolStripButton();
+            this.downloadButton = new System.Windows.Forms.ToolStripButton();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -229,9 +230,11 @@ namespace ProcessExplorer
             this.replaceButton,
             this.characterSet,
             this.searchTextBox,
-            this.replaceWithTextBox});
+            this.replaceWithTextBox,
+            this.downloadButton});
             this.toolStrip.Location = new System.Drawing.Point(0, 19);
             this.toolStrip.Name = "toolStrip";
+            this.toolStrip.Padding = new System.Windows.Forms.Padding(0, 0, 10, 0);
             this.toolStrip.Size = new System.Drawing.Size(990, 25);
             this.toolStrip.TabIndex = 3;
             this.toolStrip.Text = "toolStrip";
@@ -332,6 +335,28 @@ namespace ProcessExplorer
     "ll be converted to their big-endian value. Please note\r\nthat ASCII characters sh" +
     "ould be read in their single byte form.";
             // 
+            // fourByteButton
+            // 
+            this.fourByteButton.AutoSize = false;
+            this.fourByteButton.CheckOnClick = true;
+            this.fourByteButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.fourByteButton.Image = ((System.Drawing.Image)(resources.GetObject("fourByteButton.Image")));
+            this.fourByteButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.fourByteButton.Name = "fourByteButton";
+            this.fourByteButton.Size = new System.Drawing.Size(24, 22);
+            this.fourByteButton.Text = "B4";
+            // 
+            // eightByteButton
+            // 
+            this.eightByteButton.AutoSize = false;
+            this.eightByteButton.CheckOnClick = true;
+            this.eightByteButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.eightByteButton.Image = ((System.Drawing.Image)(resources.GetObject("eightByteButton.Image")));
+            this.eightByteButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.eightByteButton.Name = "eightByteButton";
+            this.eightByteButton.Size = new System.Drawing.Size(24, 22);
+            this.eightByteButton.Text = "B8";
+            // 
             // toolStripSeparator3
             // 
             this.toolStripSeparator3.Name = "toolStripSeparator3";
@@ -426,27 +451,16 @@ namespace ProcessExplorer
             this.pluginsLabel.MouseLeave += new System.EventHandler(this.PluginsLabel_MouseLeave);
             this.pluginsLabel.MouseHover += new System.EventHandler(this.PluginsLabel_MouseHover);
             // 
-            // fourByteButton
+            // downloadButton
             // 
-            this.fourByteButton.AutoSize = false;
-            this.fourByteButton.CheckOnClick = true;
-            this.fourByteButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
-            this.fourByteButton.Image = ((System.Drawing.Image)(resources.GetObject("fourByteButton.Image")));
-            this.fourByteButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this.fourByteButton.Name = "fourByteButton";
-            this.fourByteButton.Size = new System.Drawing.Size(24, 22);
-            this.fourByteButton.Text = "B4";
-            // 
-            // eightByteButton
-            // 
-            this.eightByteButton.AutoSize = false;
-            this.eightByteButton.CheckOnClick = true;
-            this.eightByteButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
-            this.eightByteButton.Image = ((System.Drawing.Image)(resources.GetObject("eightByteButton.Image")));
-            this.eightByteButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this.eightByteButton.Name = "eightByteButton";
-            this.eightByteButton.Size = new System.Drawing.Size(24, 22);
-            this.eightByteButton.Text = "B8";
+            this.downloadButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this.downloadButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.downloadButton.Image = ((System.Drawing.Image)(resources.GetObject("downloadButton.Image")));
+            this.downloadButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.downloadButton.Name = "downloadButton";
+            this.downloadButton.Size = new System.Drawing.Size(65, 22);
+            this.downloadButton.Text = "Download";
+            this.downloadButton.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
             // Form1
             // 
@@ -507,6 +521,7 @@ namespace ProcessExplorer
         private Label pluginsLabel;
         private ToolStripButton fourByteButton;
         private ToolStripButton eightByteButton;
+        private ToolStripButton downloadButton;
     }
 }
 

@@ -1,9 +1,10 @@
-﻿using System;
+﻿using PluginInterface;
+
 namespace ProcessExplorer.components
 {
-    class DosHeader : PluginInterface.SuperHeader
+    public class DosHeader : SuperHeader
     {
-        public DosHeader(PluginInterface.DataStorage dataStorage) : base("dos header", 19, 3)
+        public DosHeader(DataStorage dataStorage) : base("dos header", 19, 3)
         {
             string[] firstHexLine = dataStorage.FilesHex[0, 1].Split(' ');
             if (firstHexLine[0].ToLower() != "4d" || firstHexLine[1].ToLower() != "5a")
@@ -39,7 +40,7 @@ namespace ProcessExplorer.components
             SetEndPoint();
         }
 
-        public override void OpenForm(int row, PluginInterface.DataStorage dataStorage)
+        public override void OpenForm(int row, DataStorage dataStorage)
         {
             return; // No custom forms required here
         }

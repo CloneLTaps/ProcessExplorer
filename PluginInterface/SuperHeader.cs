@@ -10,8 +10,8 @@ namespace PluginInterface
 {
     public abstract class SuperHeader
     {
-        public int StartPoint { get; protected set; }
-        public int EndPoint { get; protected set; }
+        public uint StartPoint { get; protected set; }
+        public uint EndPoint { get; protected set; }
 
         public int RowSize { get; protected set; }
         public int ColumnSize { get; private set; }
@@ -47,8 +47,8 @@ namespace PluginInterface
         {
             if (Size == null) return;
 
-            int count = StartPoint;
-            foreach (int i in Size)
+            uint count = StartPoint;
+            foreach (uint i in Size)
             {
                 count += i;
             }
@@ -98,7 +98,7 @@ namespace PluginInterface
             int firstRow = (int)Math.Floor(StartPoint / 16.0);  // First row of our data
 
             if (Size == null && (row + firstRow) * 16 >= EndPoint) return "";  // This will handle blank spots in sections and the Dos Stub     
-            int mod16 = StartPoint % 16;
+            uint mod16 = StartPoint % 16;
 
             if (Size == null)
             {
@@ -109,28 +109,28 @@ namespace PluginInterface
 
                 if(column == 0)
                 {
-                    int off = row * 16 - (row > 0 ? mod16 : 0); // This compensates for the possible non 16 byte aligned headers
+                    uint off = ((uint)(row * 16 - (row > 0 ? mod16 : 0))); // This compensates for the possible non 16 byte aligned headers
                     return GetOffset(inFileOffset ? off + StartPoint : off, dataStroage.Settings.OffsetsInHex ? DataType.HEX : dataType);
                 }
             }
 
             if (Desc != null && column == 2) return Desc[row];  // This means its just asking for the custom description
 
-            int relativeOfffset = 0;  // Amount of bytes into the row till we reach our target data relative to the start of this section
-            int bytes = Size == null ? (row == 0 ? (mod16 > 0 ? 16 - mod16 : 0) : 16) : Size[row];  // How many bytes I need to read from the array
+            uint relativeOfffset = 0;  // Amount of bytes into the row till we reach our target data relative to the start of this section
+            uint bytes = Size == null ? (row == 0 ? (mod16 > 0 ? 16 - mod16 : 0) : 16) : (uint) Size[row];  // How many bytes I need to read from the array
 
             if(Size == null && (column == 1 || column == 2))
             {   // Some body sections / chunks may have less than a full row of data
-                int dif = EndPoint - StartPoint;
-                if(dif < 16) bytes = row == 0 ? dif : Math.Min(bytes, dif); // Handles the edge case where we are reading less than a full row of data
-                else bytes = Math.Min(bytes, EndPoint - (StartPoint + (row * 16) - mod16));
+                uint dif = EndPoint - StartPoint;
+                if(dif < 16) bytes = (row == 0 ? dif : Math.Min(bytes, dif)); // Handles the edge case where we are reading less than a full row of data
+                else bytes = (uint)Math.Min(bytes, (EndPoint - (StartPoint + (row * 16) - mod16)));
             }
 
             if (Size != null)
             {   // The following is designed for headers
                 for (int i = 0; i < row; i++)
                 {
-                    relativeOfffset += Size[i];  // Adding the byte size of our rows data to the offset
+                    relativeOfffset += (uint) Size[i];  // Adding the byte size of our rows data to the offset
                 }
             }
 
@@ -141,15 +141,15 @@ namespace PluginInterface
             relativeOfffset += mod16;
 
             // This handles formating data for sections, dos stub, cert table, etc that dont start at an even 16 byte interval
-            if (Size == null && row > 0) relativeOfffset = 16 * row;
+            if (Size == null && row > 0) relativeOfffset = 16 * (uint) row;
 
             // At this point we should only be working with data as the file offsets and descriptions should of been taken care of already
-            int startingDataRow = firstRow + (int)Math.Floor(relativeOfffset / 16.0);  // Row where our data begins (data may extend onto additional rows)
+            int startingDataRow = (int)(firstRow + Math.Floor(relativeOfffset / 16.0));  // Row where our data begins (data may extend onto additional rows)
 
-            int fileStartOffset = relativeOfffset + (startingDataRow * 16);  // Target data's offset relative to the start of the file
+            uint fileStartOffset = relativeOfffset + ((uint)startingDataRow * 16);  // Target data's offset relative to the start of the file
 
             string[] data = null;
-            int startingRowOffset = relativeOfffset - ((startingDataRow - firstRow) * 16);  // Offset relative to the starting row
+            uint startingRowOffset = relativeOfffset - ((uint)(startingDataRow - firstRow) * 16);  // Offset relative to the starting row
 
             for (int i = startingDataRow; i < dataStroage.GetFilesRows(); i++)
             {   // Looping through our rows
@@ -161,9 +161,9 @@ namespace PluginInterface
             }
 
             // We dont want to add spaces when dealing with the ASCII column
-            if (column == 2) return string.Join("", data.Skip(startingRowOffset).Take(bytes));
+            if (column == 2) return string.Join("", data.Skip((int)startingRowOffset).Take((int)bytes));
 
-            string finalData = string.Join(" ", data.Skip(startingRowOffset).Take(bytes));
+            string finalData = string.Join(" ", data.Skip((int)startingRowOffset).Take((int)bytes));
             if (fieldSize > 1)
             {
                 string splitHex = GetBigEndian(finalData.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries), fieldSize, dataStroage.Settings.RemoveZeros);
@@ -244,10 +244,8 @@ namespace PluginInterface
                     stringBuilder = new StringBuilder();
                     index++;
                 }
-
                 stringBuilder.Append(pair);
             }
-
             return finalString.ToString().TrimEnd();
         }
 
@@ -256,11 +254,11 @@ namespace PluginInterface
             int orignalLength = (GetData(row, 1, DataType.HEX, 1, false, dataStorage).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)).Length;
             string[,] values = GetValueVariations(data, isHexChecked, isDecimalChecked);
 
-            int offset = int.Parse(GetData(row, 0, DataType.DECIMAL, 1, true, dataStorage)); // This gets the file offset in decimal form
+            uint offset = Convert.ToUInt32(GetData(row, 0, DataType.DECIMAL, 1, true, dataStorage)); // This gets the file offset in decimal form
             int everythingRow = (int)Math.Floor(offset / 16.0);
-            int everythingRowOffset = int.Parse(dataStorage.GetFilesDecimal(everythingRow, 0));
+            uint everythingRowOffset = Convert.ToUInt32(dataStorage.GetFilesDecimal(everythingRow, 0));
             int dataByteLength = values.GetLength(0);
-            int difference = offset - everythingRowOffset; // Difference between the headers data's offset and the main rows offset  
+            int difference = (int) (offset - everythingRowOffset); // Difference between the headers data's offset and the main rows offset  
 
             dataStorage.FilesHex[everythingRow, 1] = dataStorage.ReplaceData(difference, dataByteLength, dataStorage.FilesHex[everythingRow, 1], values[0, 0], orignalLength, Component);
             dataStorage.UpdateASCII(dataStorage.FilesHex[everythingRow, 1], everythingRow);

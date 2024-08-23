@@ -8,6 +8,7 @@ using ProcessExplorer.components.impl;
 using System.Collections.Generic;
 using PluginInterface;
 using static PluginInterface.Enums;
+using ProcessExplorer.components.impl.innerImpl;
 
 namespace ProcessExplorer
 {
@@ -216,7 +217,9 @@ namespace ProcessExplorer
 
                             using FileStream fileStream = new FileStream(selectedFilePath, FileMode.Open, FileAccess.Read);
                             processHandler = new ProcessHandler(fileStream);
+                            Console.WriteLine("COMPLETED CALCULATING HEADERS");
                             Setup(false);
+                            Console.WriteLine("COMPLETED SETUP");
                         }
                         catch (Exception ex)
                         {
@@ -336,9 +339,8 @@ namespace ProcessExplorer
                     {
                         MyTreeNode currentNode = stack.Pop();
 
-                        // Push child nodes onto the stack in reverse order (to process them in the correct order)
                         for (int i = currentNode.Children.Count - 1; i >= 0; i--)
-                        {
+                        {    // Push child nodes onto the stack in reverse order (to process them in the correct order)
                             stack.Push(currentNode.Children[i]);
                         }
                     }
@@ -355,7 +357,7 @@ namespace ProcessExplorer
             // Add all of the nodes to the tree
             treeView.Nodes.Add(rootNode);
 
-            
+
             if(!reclculateHeaders)
             {   // This will auto check the following settings on startup
                 foreach (ToolStripItem item in settingsMenu.Items)
@@ -385,7 +387,7 @@ namespace ProcessExplorer
 
                 // This will trigger the data to be dislayed
                 selectedComponent = "everything";
-                dataGridView.RowCount = processHandler.dataStorage.GetFilesRows() + 1; 
+                dataGridView.RowCount = (int) processHandler.dataStorage.GetFilesRows() + 1; 
                 TriggerRedraw();
             }
         }
@@ -440,8 +442,10 @@ namespace ProcessExplorer
                 string compString = header.Component.ToString();
                 if (!compString.Contains("section header")) continue;
 
-                TreeNode sectionNode = new TreeNode("");
-                sectionNode.Text = header.Component;
+                TreeNode sectionNode = new TreeNode(header.Component);
+                Console.WriteLine($"@@@@@@@@@@ About to add base resource!");
+                if (compString.Contains(".rsrc")) sectionNode = ((ResourceHeader)processHandler.GetComponentFromMap("base resource header")).RsrcNode;
+                Console.WriteLine($"&&&&&&&&&& Added base resource!");
 
                 foreach (var innerMap in processHandler.componentMap)
                 {
@@ -450,8 +454,7 @@ namespace ProcessExplorer
 
                     if(compString.Contains(".rsrc"))
                     {
-                        if (newCompString.Contains("resource")) newCompString = "Resource Header";
-                        else if (newCompString != (".rsrc section body")) continue;
+                        if (newCompString != (".rsrc section body")) continue;
                     }
                     else if (!newCompString.Contains("section body") || compString.Replace("section header", "") != newCompString.Replace("section body", "")) continue;
 
