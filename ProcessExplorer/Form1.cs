@@ -73,6 +73,8 @@ namespace ProcessExplorer
             dataGridView.RowHeadersDefaultCellStyle.BackColor = SystemColors.ControlDark;
             dataGridView.CellFormatting += DataGridView_CellFormatting;
             dataGridView.CellValueNeeded += DataGridView_CellValueNeeded;
+
+            downloadButton.Visible = false;
         }
 
         private void RefactorLoadedPluginMenus()
@@ -587,36 +589,6 @@ namespace ProcessExplorer
 
         }
 
-        private void TreeView_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
-        {
-            // Check if the click is within the bounds of the node (excluding expand/collapse area)
-            if (e.Node.Bounds.Contains(e.Location) && processHandler != null)
-            {
-                TreeNode clickedNode = e.Node;
-                string nodeText = clickedNode.Text;
-                
-                if (nodeText == "Sections" || nodeText == "Chunks") return;
-                if (nodeText.Contains(processHandler.dataStorage.FileName)) nodeText = "everything";
-
-                int previousRowCount = processHandler.GetComponentsRowIndexCount(selectedComponent);
-                string selected = nodeText.ToLower();
-                int newRowCount = processHandler.GetComponentsRowIndexCount(selected);
-
-                if (selected == selectedComponent) return;
-                selectedComponent = selected;
-
-                dataGridView.SuspendLayout();
-                dataGridView.Rows.Clear();
-                if (processHandler.dataStorage.Settings.ReterunToTop || newRowCount > previousRowCount) dataGridView.FirstDisplayedScrollingRowIndex = 0;
-                dataGridView.RowCount = newRowCount + 1;
-                dataGridView.Invalidate();
-                dataGridView.Refresh();
-                dataGridView.ResumeLayout();
-
-                Form1_Resize(this, EventArgs.Empty);
-            }
-        }
-
         private void ReplaceButton_Click(object sender, EventArgs e)
         {
             string search = searchTextBox.Text;
@@ -1059,6 +1031,5 @@ namespace ProcessExplorer
         {
             ASCII
         }
-
     }
 }

@@ -47,7 +47,7 @@ namespace ProcessExplorer.components.impl.innerSectionImpl
 
         public void UpdateComponent(string name)
         {
-            Component = Component + $" {name}";
+            Component = Component + $" {name.ToLower()}";
         }
     }
 }
